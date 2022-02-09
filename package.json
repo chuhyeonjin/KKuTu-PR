@@ -1,0 +1,13 @@
+{
+  "name": "kkutu",
+  "version": "2.5.1",
+  "description": "Rule the words! KKuTu Online Server",
+  "private": "true",
+  "repository": "https://github.com/JJoriping/KKuTu",
+  "keywords": [
+    "kkutu"
+  ],
+  "workspaces": ["packages/*", "Server/lib"],
+  "author": "JJoriping",
+  "license": "GPL-3.0"
+}

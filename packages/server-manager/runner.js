@@ -17,10 +17,10 @@
  */
 
 const Spawn = require("child_process").spawn;
-const JLog = require("./lib/sub/jjlog");
+const JLog = require("../../Server/lib/sub/jjlog");
 const PKG = require("./package.json");
-const LANG = require("../language.json");
-const SETTINGS = require("../settings.json");
+const LANG = require("../../language.json");
+const SETTINGS = require("../../settings.json");
 const SCRIPTS = {
 	'server-on': startServer,
 	'server-off': stopServer,
@@ -120,11 +120,11 @@ function startServer(){
 	stopServer();
 	if(SETTINGS['server-name']) process.env['KKT_SV_NAME'] = SETTINGS['server-name'];
 	
-	webServer = new ChildProcess('W', "node", `${__dirname}/lib/Web/cluster.js`, SETTINGS['web-num-cpu']);
+	webServer = new ChildProcess('W', "node", `${__dirname}/../../Server/lib/Web/cluster.js`, SETTINGS['web-num-cpu']);
 	gameServers = [];
 	
 	for(let i=0; i<SETTINGS['game-num-inst']; i++){
-		gameServers.push(new ChildProcess('G', "node", `${__dirname}/lib/Game/cluster.js`, i, SETTINGS['game-num-cpu']));
+		gameServers.push(new ChildProcess('G', "node", `${__dirname}/../../Server/lib/Game/cluster.js`, i, SETTINGS['game-num-cpu']));
 	}
 	exports.send('server-status', getServerStatus());
 }

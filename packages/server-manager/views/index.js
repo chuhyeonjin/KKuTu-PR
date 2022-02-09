@@ -16,10 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-const {
-	ipcRenderer, shell
-} = require("electron");
-const LANG = require("../../language.json");
+const { ipcRenderer, shell } = require("electron");
+const LANG = require("../../../language.json");
 let $stage;
 let logs = 0;
 

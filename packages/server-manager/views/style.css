@@ -18,7 +18,7 @@
 
 html, body{
 	height: calc(100% - 2px);
-	margin: 0px;
+	margin: 0;
 }
 body{
 	font-family: Consolas, monospace;
@@ -50,5 +50,5 @@ body{
 	height: calc(100% - 40px);
 	color: #CCC;
 }
-	.log-item:hover{ margin: 1px 0px; background-color: #333; }
+	.log-item:hover{ margin: 1px 0; background-color: #333; }
 	.lt-error{ background-color: orangered; }

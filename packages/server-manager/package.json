@@ -1,15 +1,11 @@
 {
-  "name": "kkutu-server",
+  "name": "kkutu-server-manager",
   "version": "2.5.1",
-  "description": "Rule the words! KKuTu Online Server",
+  "private": "true",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
   },
-  "repository": "https://github.com/JJoriping/KKuTu",
-  "keywords": [
-    "kkutu"
-  ],
   "author": "JJoriping",
   "license": "GPL-3.0",
   "devDependencies": {

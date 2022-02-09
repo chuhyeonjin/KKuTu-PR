@@ -17,32 +17,32 @@
  */
 
 const PKG = require("./package.json");
-const SETTINGS = require("../settings.json");
-const {
-	app: App,
-	BrowserWindow,
-	Menu
-} = require('electron');
+const SETTINGS = require("../../settings.json");
+const Runner = require("./runner.js");
+const { app: App, BrowserWindow, Menu } = require("electron");
+
 // please set the environmental variable KKT_SV_NAME as the name of your server.
-const Pug = require('electron-pug')({ pretty: true }, {
+require("electron-pug")({ pretty: true }, {
 	version: PKG.version,
 	serverName: SETTINGS['server-name'] || process.env['KKT_SV_NAME']
 });
-const Runner = require("./runner.js");
 
 let mainWindow;
 
 App.on('ready', main);
+
 App.on('window-all-closed', () => {
-	if(process.platform != 'darwin'){
+	if(process.platform !== 'darwin'){
 		App.quit();
 	}
 });
+
 App.on('activate', () => {
 	if(mainWindow === null){
 		main();
 	}
 });
+
 Runner.send = (...argv) => {
 	mainWindow.webContents.send.apply(mainWindow.webContents, argv);
 };
@@ -51,10 +51,10 @@ function main(){
 	Menu.setApplicationMenu(Menu.buildFromTemplate(Runner.MAIN_MENU));
 
 	mainWindow = new BrowserWindow({
-		title: `${PKG['name']} ${PKG['version']} - Now loading`,
+		title: `${PKG.name} ${PKG.version} - Now loading`,
 		width: 800,
 		height: 600,
-		icon: __dirname + "/../logo.ico"
+		icon: __dirname + "/logo.ico"
 	});
 	mainWindow.loadURL(__dirname + "/views/index.pug");
 }
