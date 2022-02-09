@@ -19,14 +19,14 @@
 #holder{
 	width: 200px;
 	text-align: center;
-	text-shadow: 0px 0px 4px #333;
+	text-shadow: 0 0 4px #333;
 	font-weight: bold;
 }
 #logo{
 	margin-top: -20px;
 }
 #kkutu-bulletin{
-	border: 0px;
+	border: 0;
 	margin-bottom: 5px;
 }
 
@@ -35,11 +35,11 @@
 	float: left;
 	padding: 10px 5px;
 	border-radius: 5px;
-	margin: 0px 3px;
+	margin: 0 3px;
 	width: 120px;
 	font-size: 15px;
 	text-align: center;
-	box-shadow: 0px 1px 1px #333;
+	box-shadow: 0 1px 1px #333;
 }
 
 #game-start{
@@ -59,17 +59,17 @@
 	background-color: rgba(0, 0, 0, 0.4);
 }
 .server-list-title{
-	padding: 2px 0px;
+	padding: 2px 0;
 	width: 100%;
 	background-color: rgba(0, 0, 0, 0.4);
 }
 #server-refresh{
-	margin: 0px 5px;
+	margin: 0 5px;
 	cursor: pointer;
 }
 .server{
 	float: left;
-	margin: 2px 0px;
+	margin: 2px 0;
 	width: 320px;
 	height: 16px;
 	font-size: 13px;
@@ -92,6 +92,6 @@
 	animation: BGScroll 4s linear infinite;
 }
 @keyframes BGScroll{
-	from{ background-position: 0px 0px; }
+	from{ background-position: 0 0; }
 	to{ background-position: -200px -200px; }
 }

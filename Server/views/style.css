@@ -21,7 +21,7 @@ html, body{
 	margin: 0px;
 }
 body{
-	font-family: Consolas;
+	font-family: Consolas, monospace;
 	font-size: 13px;
 	color: white;
 	background-color: #161616;

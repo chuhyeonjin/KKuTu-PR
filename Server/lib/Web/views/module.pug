@@ -103,7 +103,6 @@ mixin PageHead(min)
 	if !min
 		link(rel='stylesheet', href=(locals.mobile && !locals.as_pc) ? '/css/m_style.css' : '/css/style.css')
 		link(rel='stylesheet', href='/css/fa.css')
-		link(rel='stylesheet', href='/css/expl.css')
 	script(type='text/javascript', src='/js/jquery.js')
 	script(type='text/javascript', src='/language/'+locals.page.replace("/", "_")+'/'+locals.lang)
 	

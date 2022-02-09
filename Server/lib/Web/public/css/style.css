@@ -23,10 +23,10 @@
 
 body{
 	color: #EEEEEE;
-	padding: 0px;
-	margin: 0px;
+	padding: 0;
+	margin: 0;
 	min-width: 480px;
-	font-family: NBGothic, 돋움;
+	font-family: NBGothic, 돋움, sans-serif;
 }
 a{
 	color: inherit;
@@ -65,10 +65,7 @@ span{
 	float: left;
 	padding: 7px 5px 5px 5px;
 	border: none;
-	border-top-left-radius: 0px;
-	border-top-right-radius: 0px;
-	border-bottom-left-radius: 5px;
-	border-bottom-right-radius: 5px;
+	border-radius: 0 0 5px 5px;
 	width: 100px;
 	height: 18px;
 	font-size: 15px;
@@ -78,12 +75,12 @@ span{
 	background-color: #DEAF56;
 	transition: all 200ms ease;
 }
-.Menu .menu-btn:hover{ padding-top: 12px; height: auto; box-shadow: 0px 2px 2px #141414; background-image: none; background-color: #EFC067; }
+.Menu .menu-btn:hover{ padding-top: 12px; height: auto; box-shadow: 0 2px 2px #141414; background-image: none; background-color: #EFC067; }
 .Menu .menu-btn:active{ color: #FFFFFF; background-color: #CD9E45; }
 	.Menu .menu-btn .menu-sub-separator{
 		display: none;
 		border-top: 1px dashed #777777;
-		margin: 3px 0px;
+		margin: 3px 0;
 	}
 	.Menu .menu-btn .menu-sub-btn{
 		display: none;
@@ -101,8 +98,8 @@ span{
 #quick-search-tf{
 	float: left;
 	border-right: none;
-	border-top-right-radius: 0px;
-	border-bottom-right-radius: 0px;
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
 	width: 100px;
 	height: 16px;
 	font-size: 13px !important;
@@ -110,8 +107,8 @@ span{
 #quick-search-btn{
 	float: left;
 	border-left: none;
-	border-top-left-radius: 0px;
-	border-bottom-left-radius: 0px;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 	width: 30px;
 	height: 16px;
 }
@@ -126,7 +123,7 @@ span{
 	background-color: #222222;
 	background-color: rgba(0, 0, 0, 0.8);
 }
-	.autocomp-item{ margin: 1px 0px; }
+	.autocomp-item{ margin: 1px 0; }
 	.autocomp-item:hover, .autocomp-select{ color: #FFFFFF; background-color: rgba(50, 50, 50, 0.8); }
 #account{ float: right; margin: 1px; font-size: 11px; color: #444444; }
 #account-setting{
@@ -157,7 +154,7 @@ span{
 	left: 0;
 	right: 0;
 	background-color: #EEBB33;
-	padding: 3px 0px;
+	padding: 3px 0;
 	z-index: -1;
 }
 .searching{
@@ -187,7 +184,7 @@ span{
 	padding: 5px;
 	border-radius: 10px;
 	margin-bottom: 1px;
-	box-shadow: 0px 2px 2px #141414;
+	box-shadow: 0 2px 2px #141414;
 	background-color: #232323;
 }
 .product-title{
@@ -201,24 +198,24 @@ span{
 	margin-right: 5px;
 }
 .product-body{
-	padding: 5px 5px 0px 5px;
+	padding: 5px 5px 0 5px;
 	font-size: 13px;
 }
 .product-body #Top{ display: none; }
 .product-body #Bottom{ display: none; }
 .graph{
-	box-shadow: 0px 1px 1px #141414;
+	box-shadow: 0 1px 1px #141414;
 }
 .graph-bar{
 	height: 100%;
 }
 .chart{
-	box-shadow: 0px 1px 1px #141414;
+	box-shadow: 0 1px 1px #141414;
 }
 .chart-bar{
 	height: 100%;
 	text-align: center;
-	text-shadow: 0px 1px 1px #141414;
+	text-shadow: 0 1px 1px #141414;
 }
 .tier-text{
 	padding: 1px;
@@ -248,8 +245,8 @@ span{
 /* 배경 */
 #Background{
 	position: fixed;
-	top: 0px;
-	left: 0px;
+	top: 0;
+	left: 0;
 	width: 100%;
 	height: 100%;
 	pointer-events: none;
@@ -270,7 +267,7 @@ span{
 	background-color: rgba(0, 0, 0, 0.7);
 	z-index: 1;
 }
-.auto-item{ margin: 2px 0px; cursor: pointer; }
+.auto-item{ margin: 2px 0; cursor: pointer; }
 .auto-item:hover{ background-color: #333333; }
 .auto-selected{ color: #EEEE44; background-color: #3B3B3B; }
 
@@ -278,7 +275,7 @@ span{
 	position: fixed;
 	width: 100%;
 	height: 30px;
-	box-shadow: 0px 2px 2px #111111;
+	box-shadow: 0 2px 2px #111111;
 	background-image: url('/img/topbg.png');
 	z-index: 5;
 }
@@ -298,7 +295,7 @@ span{
 	margin-top: 10px;
 	color: #CCCCCC;
 }
-	.bottom-legal a{ padding: 0px 5px; }
+	.bottom-legal a{ padding: 0 5px; }
 .bottom-contact{
 	color: #777777;
 	font-weight: bold;
@@ -326,7 +323,7 @@ explcss[yellow]{
 }
 
 /* jjowt */
-h1, h2, h3, h4, h5{ margin: 0px; font-weight: normal; }
+h1, h2, h3, h4, h5{ margin: 0; font-weight: normal; }
 h1{ font-size: 24px; font-weight: bold; margin: 4px; }
 h2{ font-size: 20px; margin: 2px; }
 h3{ font-size: 15px; }
@@ -334,8 +331,8 @@ h4{ font-size: 13px; }
 h5{ font-size: 11px; }
 code{
 	position: fixed;
-	left: 0px; top: 0px;
-	font-family: Consolas;
+	left: 0; top: 0;
+	font-family: Consolas, monospace;
 	font-size: 13px;
 	color: #CCCCCC;
 	padding: 5px;
@@ -347,14 +344,14 @@ code{
 	background-size: 100%;
 }
 .jt-btn-shadow{
-	box-shadow: 0px 2px 2px #000000;
-	text-shadow: 0px 1px 1px #444444;
+	box-shadow: 0 2px 2px #000000;
+	text-shadow: 0 1px 1px #444444;
 }
 .tier-U{ color: #AAAAAA; }
 .tier-B{ color: #C59E63; }
 .tier-S{ color: #E0E8DD; }
 .tier-G{ color: #F8E972; }
-.tier-P{ color: #A2F9E1; text-shadow: 0px 0px 1px #AADDDD; }
-.tier-D{ color: #96C7F9; text-shadow: 0px 0px 3px #88BBEE; }
-.tier-M{ color: #2AC9AF; text-shadow: 0px 0px 5px #11AA88; }
-.tier-C{ color: #2EFFDF; text-shadow: 0px 0px 5px #1072AA; }
+.tier-P{ color: #A2F9E1; text-shadow: 0 0 1px #AADDDD; }
+.tier-D{ color: #96C7F9; text-shadow: 0 0 3px #88BBEE; }
+.tier-M{ color: #2AC9AF; text-shadow: 0 0 5px #11AA88; }
+.tier-C{ color: #2EFFDF; text-shadow: 0 0 5px #1072AA; }

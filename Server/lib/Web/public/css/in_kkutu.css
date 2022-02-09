@@ -16,10 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-equ{
-	font-family: consolas;
-	font-style: italic;
-}
 #Intro{
 	position: fixed;
 	z-index: 4;
@@ -33,16 +29,16 @@ equ{
 		top: 4px;
 		left: 4px;
 		font-size: 13px;
-		text-shadow: 0px 0px 3px #000000;
+		text-shadow: 0 0 3px #000000;
 	}
 	#intro-text{
 		position: absolute;
 		top: 360px;
-		left: 0px;
+		left: 0;
 		width: 100%;
 		font-size: 15px;
 		text-align: center;
-		text-shadow: 0px 0px 3px #000000;
+		text-shadow: 0 0 3px #000000;
 	}
 #Loading{
 	position: fixed;
@@ -74,13 +70,13 @@ iframe{
 }
 #Yell{
 	position: fixed;
-	padding: 10px 0px;
+	padding: 10px 0;
 	margin-top: 200px;
 	width: 100%;
 	font-size: 32px;
 	font-weight: bold;
 	text-align: center;
-	text-shadow: 0px 1px 1px #141414;
+	text-shadow: 0 1px 1px #141414;
 	pointer-events: none;
 	background-color: rgba(0, 0, 0, 0.7);
 }
@@ -96,7 +92,7 @@ iframe{
 	color: #2255FF;
 	font-weight: bold;
 	text-align: center;
-	text-shadow: 0px 1px 2px #000033;
+	text-shadow: 0 1px 2px #000033;
 	animation: ScoreGoing 2s ease 1;
 }
 	.bonus{ color: #6666FF; }
@@ -109,8 +105,8 @@ iframe{
 .kkutu-menu button{
 	float: left;
 	border: none;
-	border-bottom-left-radius: 0px;
-	border-bottom-right-radius: 0px;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 	width: 98px;
 	height: 20px;
 }
@@ -132,11 +128,11 @@ iframe{
 	padding: 5px;
 	border-radius: 10px;
 	color: #111111;
-	box-shadow: 0px 1px 1px #141414;
+	box-shadow: 0 1px 1px #141414;
 	background-color: #EEEEEE;
 	z-index: 2;
 }
-	.dialog-bar{ float: left; margin: 3px 0px; width: 100%; }
+	.dialog-bar{ float: left; margin: 3px 0; width: 100%; }
 	.dialog-bar h4{ float: left; padding-top: 6px; width: 100px; text-align: center; }
 	.dialog-bar-value{ width: calc(100% - 100px) !important; text-align: left !important; }
 	.dialog-bar input, .dialog-bar select{ float: left; width: 187px; height: 14px; box-sizing: inherit; outline: none; }
@@ -184,9 +180,9 @@ iframe{
 	position: absolute;
 }
 .Product{
-	border-radius: 0px;
+	border-radius: 0;
 	color: #111111;
-	box-shadow: 0px 2px 1px #DDDDDD;
+	box-shadow: 0 2px 1px #DDDDDD;
 	background-color: #EEEEEE;
 }
 .product-title{
@@ -198,7 +194,7 @@ iframe{
 .product-title i{ color: #111111; }
 .dialog-front{ z-index: 3; }
 #comm-friends div{ float: left; }
-	.cf-item{ margin: 2px 0px; width: 100%; }
+	.cf-item{ margin: 2px 0; width: 100%; }
 		.cfi-status{ border-radius: 7px; margin-right: 2px; width: 12px; height: 12px; }
 			.cfi-stat-on{ background-color: green; }
 			.cfi-stat-off{ background-color: gray; }
@@ -217,16 +213,16 @@ iframe{
 		.profile-tag{ font-size: 11px; color: #777; }
 		.profile-level-text{ padding-top: 2px; font-size: 13px; }
 		.profile-score-text{ float: right !important; padding-top: 3px; font-size: 11px; color: #444444; }
-	.profile-record-field{ margin: 2px 0px; width: 100%; }
+	.profile-record-field{ margin: 2px 0; width: 100%; }
 		.profile-field-name{ width: 35%; text-align: center; }
 		.profile-field-record{ width: 32%; text-align: center; }
 		.profile-field-score{ width: 32%; text-align: center; }
 #RoomInfoDiag .dialog-body div{ float: left; }
-	.ri-player{ margin: 2px 0px; width: 100%; }
+	.ri-player{ margin: 2px 0; width: 100%; }
 		.rip-moremi{ margin-right: 3px; width: 40px; height: 40px; }
 		.rip-master{ font-weight: bold; color: #E14E2D; }
 		.rip-title{ width: calc(100% - 43px); }
-		.rip-team{ margin: 3px 3px 0px 0px; width: 44px; text-align: center; }
+		.rip-team{ margin: 3px 3px 0 0; width: 44px; text-align: center; }
 		.rip-form{ margin-top: 3px; width: calc(100% - 90px); }
 .UserListBox{
 	width: 200px;
@@ -237,9 +233,9 @@ iframe{
 	.users-item{ width: 190px; }
 		.users-image{ margin: 1px; width: 18px; height: 18px; }
 		.users-level{ margin: 1px; width: 18px; height: 18px; }
-		.users-name{ padding: 2px 0px 0px 3px; width: 147px; font-size: 13px; }
+		.users-name{ padding: 2px 0 0 3px; width: 147px; font-size: 13px; }
 		.users-item:hover{ cursor: pointer; background-color: #F4F4F4; }
-	.invite-item{ margin: 2px 0px; width: 100%; height: 20px; }
+	.invite-item{ margin: 2px 0; width: 100%; height: 20px; }
 		.invite-item .users-name{ width: 270px; }
 .RoomListBox{
 	width: 790px;
@@ -253,13 +249,13 @@ iframe{
 		margin: 3px;
 		width: 364px;
 		height: 64px;
-		box-shadow: 0px 1px 1px #777777;
+		box-shadow: 0 1px 1px #777777;
 		cursor: pointer;
 		background-color: #E4E4E4;
 		transition: all 300ms ease;
 	}
 		.rooms-create{ background-color: #8EC0F3; }
-		.rooms-create>div{ float: none; padding: 20px 0px; text-align: center; font-size: 15px; font-weight: bold; }
+		.rooms-create>div{ float: none; padding: 20px 0; text-align: center; font-size: 15px; font-weight: bold; }
 		.rooms-channel{ position: relative; width: 10px; height: 10px; border-radius: 5px; margin-right: -10px; }
 			.rooms-channel:hover{ width: 8px; height: 8px; border: 1px solid #000; }
 			.channel-1{ background-color: #F99; }
@@ -302,7 +298,7 @@ iframe{
 		float: left;
 		padding-right: 3px;
 		border-right: 1px solid #CCCCCC;
-		margin: 0px 2px 0px -5px;
+		margin: 0 2px 0 -5px;
 		width: 40px;
 		height: 320px;
 	}
@@ -310,7 +306,7 @@ iframe{
 			float: left;
 			padding-top: 20px;
 			border-radius: 10px;
-			margin: 2px 0px;
+			margin: 2px 0;
 			width: 100%;
 			height: 40px;
 			text-align: center;
@@ -332,7 +328,7 @@ iframe{
 		margin: 3px;
 		width: 224px;
 		height: 151px;
-		box-shadow: 0px 1px 1px #777777;
+		box-shadow: 0 1px 1px #777777;
 		background-color: #E4E4E4;
 	}
 		.room-user div{ float: left; }
@@ -347,7 +343,7 @@ iframe{
 			.room-user-team{ margin-left: 60%; width: 40%; text-align: center; }
 		.room-user-title{ padding: 6px 4px; width: 216px; font-size: 15px; }
 		.room-user-level{ width: 30px; height: 30px; }
-		.room-user-name{ padding: 9px 0px 0px 4px; font-weight: bold; }
+		.room-user-name{ padding: 9px 0 0 4px; font-weight: bold; }
 		.room-user:hover{ cursor: pointer; background-color: #EEEEEE; }
 .GameBox{
 	width: 1000px;
@@ -357,7 +353,7 @@ iframe{
 	.GameBox .product-title{ height: 12px; }
 	.GameBox .product-title h5{ float: left; }
 	.GameBox div{ float: left; }
-	.GameBox .product-body{ padding-top: 0px; }
+	.GameBox .product-body{ padding-top: 0; }
 	.game-replay-controller{ float: right !important; width: 100px; }
 	.game-replay-controller button{
 		float: right;
@@ -367,14 +363,14 @@ iframe{
 		font-size: 11px;
 	}
 	.hints{
-		margin: 40px 10px 0px 10px;
+		margin: 40px 10px 0 10px;
 		width: 225px;
 		height: 110px;
 	}
 		.hint-item{
 			padding: 5px;
 			border-radius: 5px;
-			margin: 1px 0px;
+			margin: 1px 0;
 			color: #EEEEEE;
 			font-size: 13px;
 			max-height: 63px;
@@ -400,12 +396,12 @@ iframe{
 			background-color: #111111;
 		}
 		.cw-q-head{
-			margin: 3px 0px;
+			margin: 3px 0;
 			width: 100%;
 			font-size: 13px;
 			color: #EEEEEE;
 			text-align: center;
-			text-shadow: 0px 1px 1px #000000;
+			text-shadow: 0 1px 1px #000000;
 		}
 		.cw-q-body{
 			padding: 5px;
@@ -416,20 +412,20 @@ iframe{
 		}
 	.items{
 		padding-top: 55px;
-		margin: 50px 40px 0px 105px;
+		margin: 50px 40px 0 105px;
 		width: 100px;
 		height: 45px;
 		font-size: 24px;
 		color: #EEEEEE;
 		font-weight: bold;
 		text-align: center;
-		text-shadow: 0px 1px 5px #141414;
+		text-shadow: 0 1px 5px #141414;
 		background-image: url('/img/kkutu/lefthand.png');
 	}
 	.jjoriping{ width: 500px; }
 	.cw.jjoriping{ margin-top: -10px; width: 322px; }
 		.jjoObj{ position: relative; }
-		.jjoEyeL{ top: 11px; left: 0px; }
+		.jjoEyeL{ top: 11px; left: 0; }
 		.jjoNose{ top: 9px; left: 181px; }
 		.cw .jjoNose{ left: 94px; }
 		.jjoEyeR{ top: 11px; left: 361px; }
@@ -447,9 +443,7 @@ iframe{
 		.cw .jjoDisplayBar{ width: 308px; height: 330px; transition: all 0.5s ease; }
 			.jjo-display{
 				padding: 8px 5px;
-				border-radius: 10px;
-				border-bottom-left-radius: 0px;
-				border-bottom-right-radius: 0px;
+				border-radius: 10px 10px 0 0;
 				width: 476px;
 				height: 23px;
 				font-size: 20px;
@@ -470,7 +464,7 @@ iframe{
 				.cw-bar:hover{ background-color: #F2F2F2; z-index: 1; }
 				.cw-bar.cw-open{ background-color: #777777; pointer-events: none; z-index: 2; }
 				.cw-bar.cw-my-open{ background-color: #00A55A; }
-					.cw-cell{ padding-top: 4px; border-radius: 5px; margin: 3px; width: 32.5px; height: 28.5px; box-shadow: 0px 1px 1px #000000; }
+					.cw-cell{ padding-top: 4px; border-radius: 5px; margin: 3px; width: 32.5px; height: 28.5px; box-shadow: 0 1px 1px #000000; }
 			.jjoDisplayBar .graph{
 				border-left: 1px solid rgba(0, 0, 0, 0.7);
 				border-right: 1px solid rgba(0, 0, 0, 0.7);
@@ -479,7 +473,7 @@ iframe{
 				color: #FFFFFF;
 				box-shadow: none;
 				text-align: right;
-				text-shadow: 0px 1px 3px #141414;
+				text-shadow: 0 1px 3px #141414;
 				overflow: hidden;
 			}
 			.jjoDisplayBar .graph-bar{
@@ -505,14 +499,14 @@ iframe{
 			.sock-picked{ color: #FFFF44; font-weight: bold; font-size: 24px; }
 	.chain{
 		padding-top: 55px;
-		margin: 50px 105px 0px 40px;
+		margin: 50px 105px 0 40px;
 		width: 100px;
 		height: 45px;
 		font-size: 24px;
 		color: #EEEEEE;
 		font-weight: bold;
 		text-align: center;
-		text-shadow: 0px 1px 5px #141414;
+		text-shadow: 0 1px 5px #141414;
 		background-image: url('/img/kkutu/righthand.png');
 	}
 	.rounds{
@@ -520,10 +514,10 @@ iframe{
 		width: 990px;
 		color: #FFFFFF;
 		text-align: center;
-		text-shadow: 0px 1px 1px #141414;
+		text-shadow: 0 1px 1px #141414;
 	}
 	.cw.rounds{ margin-top: -380px; }
-		.rounds label{ margin: 0px 3px; }
+		.rounds label{ margin: 0 3px; }
 		.cw.rounds label{ cursor: pointer; }
 		.rounds-current{ color: #FFFF3B; font-size: 16px; }
 		.round-effect{ animation: RoundEffect 0.8s ease 1; }
@@ -538,7 +532,7 @@ iframe{
 		}
 			.history-item{
 				height: 28px;
-				padding: 4px 0px;
+				padding: 4px 0;
 				border-radius: 10px;
 				margin: 3px;
 				color: #EEEEEE;
@@ -562,14 +556,14 @@ iframe{
 			.history-mean-c{ color: #AAAAAA; }
 			.history-mean{
 				float: none !important;
-				padding: 3px 2px 0px 1px;
+				padding: 3px 2px 0 1px;
 				font-size: 11px;
 				color: #AAAAAA;
 			}
 			.word-head{ margin-right: 3px; }
 				.word-m1-head{
-					padding: 0px 1px;
-					margin: 0px 1px;
+					padding: 0 1px;
+					margin: 0 1px;
 					color: #111111;
 					font-weight: bold;
 					background-color: #BBBBBB;
@@ -595,7 +589,7 @@ iframe{
 			font-size: 20px;
 		}
 	.game-body{
-		margin: 0px -1px;
+		margin: 0 -1px;
 		width: 992px;
 		height: 180px;
 	}
@@ -607,7 +601,7 @@ iframe{
 			margin: 13px 3px 3px 3px;
 			width: 110px;
 			height: 167px;
-			box-shadow: 0px 1px 1px #141414;
+			box-shadow: 0 1px 1px #141414;
 			background-color: #DDDDDD;
 			transition: all 300ms ease;
 		}
@@ -619,15 +613,15 @@ iframe{
 		}
 		.game-user-current{
 			animation: CurrentBlink 2s linear infinite;
-			margin-top: 0px;
+			margin-top: 0;
 			height: 177px;
 			background-color: #DDFFDD;
 		}
 		.game-user-bomb{ border-color: #FF6666; }
 			.game-user-image{ margin: 3px 5px; width: 100px; height: 100px; }
 			.game-user-level{ margin: 1px; width: 18px; height: 18px; }
-			.game-user-name{ padding-left: 3px; margin: 3px 0px; width: 87px; height: 20px; font-size: 15px; }
-			.game-user-score{ padding: 0px 5px; border-radius: 10px; width: 100px; font-size: 30px; font-weight: bold; }
+			.game-user-name{ padding-left: 3px; margin: 3px 0; width: 87px; height: 20px; font-size: 15px; }
+			.game-user-score{ padding: 0 5px; border-radius: 10px; width: 100px; font-size: 30px; font-weight: bold; }
 				.game-user-score-char{ width: 20px; text-align: center; }
 			.cw .game-user-score{ padding-top: 3px; font-size: 15px; }
 	#ResultDiag .dialog-body div{ float: left; }
@@ -641,7 +635,7 @@ iframe{
 				margin: 1px;
 				width: 388px;
 				height: 20px;
-				box-shadow: 0px 1px 1px #CCCCCC;
+				box-shadow: 0 1px 1px #CCCCCC;
 				background-color: #F4F4F4;
 			}
 			.result-board-me{
@@ -660,7 +654,7 @@ iframe{
 					color: #2626FF;
 					font-size: 13px;
 					text-align: center;
-					text-shadow: 0px 0px 3px #6DA1FF;
+					text-shadow: 0 0 3px #6DA1FF;
 				}
 					.result-board-lvup i{ float: left; margin-right: 1px; animation: LvUpBlink 1s infinite; }
 					.result-board-lvup div{ padding-top: 3px; }
@@ -674,7 +668,7 @@ iframe{
 			font-size: 13px;
 		}
 			.result-me-score{ width: 195px; color: #3C5FC2; text-align: center; }
-				.result-me-bonus{ color: #4BBBFF; font-weight: bold; text-shadow: 0px 0px 2px #C8C8F7; }
+				.result-me-bonus{ color: #4BBBFF; font-weight: bold; text-shadow: 0 0 2px #C8C8F7; }
 			.result-me-money{ width: 195px; color: #555555; text-align: center; }
 			.result-me-level{ margin-top: 5px; width: 80px; }
 				.result-me-level-head{ width: 80px; text-align: center; }
@@ -690,7 +684,7 @@ iframe{
 				width: 308px;
 				height: 49px;
 				overflow: hidden;
-				box-shadow: 0px 1px 1px #CCCCCC;
+				box-shadow: 0 1px 1px #CCCCCC;
 				background-color: #333333;
 			}
 				.result-me-before-bar{ background-image: url('/img/kkutu/scorebar.png'); }
@@ -702,7 +696,7 @@ iframe{
 					width: 308px;
 					color: #EEEEEE;
 					text-align: center;
-					text-shadow: 0px 1px 1px #141414;
+					text-shadow: 0 1px 1px #141414;
 				}
 			.result-me-expl h4{ color: #FFFF44; }
 			.result-me-expl div{ margin-bottom: 4px; width: 140px; }
@@ -718,7 +712,7 @@ iframe{
 	cursor: pointer;
 }
 	.MeBox div{ float: left; }
-	.bar-text{ color: #EEEEEE; text-align: center; text-shadow: 0px 1px 1px #141414; }
+	.bar-text{ color: #EEEEEE; text-align: center; text-shadow: 0 1px 1px #141414; }
 	.my-image{ width: 80px; height: 80px; }
 	.my-stat{ padding-left: 5px; width: 105px; }
 		.my-stat-level{ margin: 1px; width: 18px; height: 18px; }
@@ -728,8 +722,8 @@ iframe{
 		.my-okg{ border-radius: 5px; margin-top: 3px; width: 100%; height: 20px; overflow: hidden; background-color: #995511; }
 			.my-okg .graph-bar{ background-color: #FFBB44; }
 		.my-okg-text{ margin-top: -15px; width: 100px; }
-	.my-level{ margin: 13px 0px; width: 190px; font-size: 15px; text-align: center; }
-	.my-gauge{ border-radius: 10px; margin: 3px 0px; width: 190px; height: 30px; overflow: hidden; background-color: #333333; }
+	.my-level{ margin: 13px 0; width: 190px; font-size: 15px; text-align: center; }
+	.my-gauge{ border-radius: 10px; margin: 3px 0; width: 190px; height: 30px; overflow: hidden; background-color: #333333; }
 		.my-gauge .graph-bar{ background-image: url('/img/kkutu/scorebar.png'); }
 	.my-gauge-text{ margin-top: -25px; width: 190px; }
 	.category-filter{
@@ -747,7 +741,7 @@ iframe{
 	}
 		.dress-type{
 			float: left;
-			padding: 1px 0px;
+			padding: 1px 0;
 			border: 1px solid #AAAAAA;
 			margin: 1px;
 			width: 40px;
@@ -763,21 +757,21 @@ iframe{
 			width: 40px;
 			height: 40px;
 		}
-		.dress-equipped{ padding: 0px; border: 2px solid #FFB861; }
+		.dress-equipped{ padding: 0; border: 2px solid #FFB861; }
 		.dress-expl{ width: 240px; font-size: 11px; }
 			.dress-item-title{ float: left; width: 160px; font-size: 13px; }
 			.dress-item-group{ float: left; padding-top: 1px; width: 80px; color: #BBBBBB; text-align: right; }
 			.dress-item-term{ float: left; color: #FFBB77; }
-			.dress-expl label{ display: inline; padding: none; font-size: inherit; }
-			.dress-item-image{ width: 40px; height: 40px; font-size: 11px; text-align: right; text-shadow: 0px 0px 3px #111111; }
-			.dress-item-expl{ float: left; margin: 2px 0px; width: 100%; }
+			.dress-expl label{ display: inline; padding: 0; font-size: inherit; }
+			.dress-item-image{ width: 40px; height: 40px; font-size: 11px; text-align: right; text-shadow: 0 0 3px #111111; }
+			.dress-item-expl{ float: left; margin: 2px 0; width: 100%; }
 			.dress-item-opts{ float: left; padding-top: 4px; border-top: 1px dashed #777777; margin-top: 2px; width: 100%; }
 				.item-opts-head{ color: #EEEE44; }
 					.item-opts-head::after{ content: ": " }
 	#cf-tray{ border-bottom: 1px solid #CCCCCC; margin-top: -2px; height: 32px; }
 		#cf-tray div{ width: 30px; height: 30px; cursor: pointer; }
-		.cf-tray-selected{ padding: 0px; border: 2px solid #61B8FF; }
-	#cf-dict{ margin: 2px 0px; height: 166px; color: #BBBBBB; overflow-y: scroll; background-color: #111111; }
+		.cf-tray-selected{ padding: 0; border: 2px solid #61B8FF; }
+	#cf-dict{ margin: 2px 0; height: 166px; color: #BBBBBB; overflow-y: scroll; background-color: #111111; }
 	#cf-reward{ float: left; width: 100%; height: 148px; overflow-y: scroll; }
 		.cf-rew-item{ float: left; border-bottom: 1px dashed #DDDDDD; margin-bottom: 1px; }
 		.cf-rew-item div{ float: left; }
@@ -805,13 +799,13 @@ iframe{
 		background-color: #F4F4F4;
 	}
 	.chat-balloon-tip{
-		margin: -1px -12px 0px -7px;
+		margin: -1px -12px 0 -7px;
 		width: 20px;
 		height: 20px;
 		background-image: url('/img/kkutu/balloontip.png');
 	}
 	.chat-balloon-bot{
-		margin: -1px -12px 0px 50px;
+		margin: -1px -12px 0 50px;
 		width: 20px;
 		height: 20px;
 		background-image: url('/img/kkutu/balloonbot.png');
@@ -823,8 +817,8 @@ iframe{
 #Talk{
 	float: left;
 	border-right: none;
-	border-top-right-radius: 0px;
-	border-bottom-right-radius: 0px;
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
 	margin-top: 5px;
 	width: calc(100% - 82px);
 	height: 20px;
@@ -832,22 +826,22 @@ iframe{
 #ChatBtn{
 	float: left;
 	border-left: none;
-	border-top-left-radius: 0px;
-	border-bottom-left-radius: 0px;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 	margin-top: 5px;
 	width: 60px;
 	height: 20px;
 }
 	#Chat hr, #chat-log-board hr{
-		padding-top: 0px;
-		border: 0px;
+		padding-top: 0;
+		border: 0;
 		border-bottom: 1px dashed #999999;
-		margin: 2px 0px;
+		margin: 2px 0;
 	}
 	.chat-item{
 		float: left;
-		padding: 1px 0px;
-		margin: 1px 0px;
+		padding: 1px 0;
+		margin: 1px 0;
 		width: 100%;
 		overflow: hidden;
 	}
@@ -876,7 +870,7 @@ iframe{
 		.chat-body{ float: left; width: calc(100% - 190px); min-height: 14px; }
 .ADBox{
 	width: 1000px;
-	box-shadow: 0px 1px 1px #141414;
+	box-shadow: 0 1px 1px #141414;
 	background-color: #232323;
 }
 .ADBox .product-title{
@@ -893,9 +887,9 @@ iframe{
 	100%	{ font-size: 12px; color: #FFFFFF; background-color: rgba(0, 0, 0, 0); }
 }
 @keyframes ReadyBlink{
-	0%		{ margin-top: 0px; height: 20px; }
+	0%		{ margin-top: 0; height: 20px; }
 	50%		{ margin-top: -5px; height: 25px; }
-	100%	{ margin-top: 0px; height: 20px; }
+	100%	{ margin-top: 0; height: 20px; }
 }
 @keyframes CurrentBlink{
 	0%		{ border-color: #3EFF3E; }
