@@ -62,7 +62,7 @@ process.on('uncaughtException', function(err){
 	for(var i in DIC){
 		DIC[i].send('dying');
 	}
-	File.appendFile("../KKUTU_ERROR.log", text, function(res){
+	File.appendFile("../../KKUTU_ERROR.log", text, function(res){
 		JLog.error(`ERROR OCCURRED! This worker will die in 10 seconds.`);
 		console.log(text);
 	});
