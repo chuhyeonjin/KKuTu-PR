@@ -21,8 +21,8 @@ const JLog	 = require("../../sub/jjlog");
 // const Ajae	 = require("../../sub/ajaejs").checkAjae;
 const passport = require('passport');
 const glob = require('glob-promise');
-const GLOBAL	 = require("../../sub/global.json");
-const config = require('../../sub/auth.json');
+const GLOBAL	 = require("../../../../config/global.json");
+const config = require('../../../../config/auth.json');
 const path = require('path')
 
 function process(req, accessToken, MainDB, $p, done) {

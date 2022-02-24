@@ -2,7 +2,7 @@ Server/run.bat
 **/node_modules/
 Server/lib/Web/public/js/**
 !Server/lib/Web/public/js/jquery.js
-Server/lib/sub/auth.json
-Server/lib/sub/global.json
+config/auth.json
+config/global.json
 .vscode/
 .idea/
