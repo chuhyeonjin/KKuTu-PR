@@ -18,9 +18,9 @@
 
 var WebSocket = require('ws');
 var File = require('fs');
-var Const = require("../const");
+var Const = require("kkutu-core/const");
 var https = require('https');
-var Secure = require('../sub/secure');
+var Secure = require('kkutu-core/sub/secure');
 var Server;
 var HTTPS_Server
 
@@ -37,10 +37,10 @@ if(Const.IS_SECURED) {
 }
 var Master = require('./master');
 var KKuTu = require('./kkutu');
-var Lizard = require('../sub/lizard');
-var MainDB = require('../Web/db');
-var JLog = require('../sub/jjlog');
-var GLOBAL = require('../../../config/global.json');
+var Lizard = require('kkutu-core/sub/lizard');
+var MainDB = require('kkutu-core/Web/db');
+var JLog = require('kkutu-core/sub/jjlog');
+var GLOBAL = require('../../config/global.json');
 
 var DIC = {};
 var DNAME = {};

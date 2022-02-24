@@ -23,11 +23,11 @@ var https = require('https');
 var HTTPS_Server;
 // var Heapdump = require("heapdump");
 var KKuTu = require('./kkutu');
-var GLOBAL = require("../../../config/global.json");
-var Const = require("../const");
-var JLog = require('../sub/jjlog');
-var Secure = require('../sub/secure');
-var Recaptcha = require('../sub/recaptcha');
+var GLOBAL = require("../../config/global.json");
+var Const = require("kkutu-core/const");
+var JLog = require('kkutu-core/sub/jjlog');
+var Secure = require('kkutu-core/sub/secure');
+var Recaptcha = require('kkutu-core/sub/recaptcha');
 
 var MainDB;
 
@@ -331,7 +331,7 @@ Cluster.on('message', function(worker, msg){
 });
 exports.init = function(_SID, CHAN){
 	SID = _SID;
-	MainDB = require('../Web/db');
+	MainDB = require('kkutu-core/Web/db');
 	MainDB.ready = function(){
 		JLog.success("Master DB is ready.");
 		

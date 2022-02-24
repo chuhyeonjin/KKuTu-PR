@@ -17,8 +17,8 @@
  */
 
 var Cluster = require("cluster");
-var Const = require('../const');
-var JLog = require('../sub/jjlog');
+var Const = require('kkutu-core/const');
+var JLog = require('kkutu-core/sub/jjlog');
 var SID = Number(process.argv[2]);
 var CPU = Number(process.argv[3]); //require("os").cpus().length;
 

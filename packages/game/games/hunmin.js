@@ -16,15 +16,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var Const = require('../../const');
-var Lizard = require('../../sub/lizard');
+var Const = require('kkutu-core/const');
+var Lizard = require('kkutu-core/sub/lizard');
 var DB;
 var DIC;
 
 const ROBOT_START_DELAY = [ 1200, 800, 400, 200, 0 ];
 const ROBOT_TYPE_COEF = [ 1250, 750, 500, 250, 0 ];
 const ROBOT_THINK_COEF = [ 4, 2, 1, 0, 0 ];
-const ROBOT_HIT_LIMIT = [ 4, 2, 1, 0, 0 ];
+const ROBOT_HIT_LIMIT = [ 8, 4, 2, 1, 0 ];
+// ㄱ, ㄴ, ㄷ, ㅁ, ㅂ, ㅅ, ㅇ, ㅈ, ㅊ, ㅌ, ㅍ, ㅎ
+const HUNMIN_LIST = [ 4352, 4354, 4355, 4358, 4359, 4361, 4363, 4364, 4366, 4368, 4369, 4370 ];
 
 exports.init = function(_DB, _DIC){
 	DB = _DB;
@@ -34,6 +36,7 @@ exports.getTitle = function(){
 	var R = new Lizard.Tail();
 	var my = this;
 	
+	my.game.done = [];
 	setTimeout(function(){
 		R.go("①②③④⑤⑥⑦⑧⑨⑩");
 	}, 500);
@@ -41,15 +44,15 @@ exports.getTitle = function(){
 };
 exports.roundReady = function(){
 	var my = this;
-	var ijl = my.opts.injpick.length;
 	
 	clearTimeout(my.game.turnTimer);
 	my.game.round++;
 	my.game.roundTime = my.time * 1000;
 	if(my.game.round <= my.round){
-		my.game.theme = my.opts.injpick[Math.floor(Math.random() * ijl)];
+		my.game.theme = getTheme(2, my.game.done);
 		my.game.chain = [];
-		if(my.opts.mission) my.game.mission = getMission(my.rule.lang);
+		if(my.opts.mission) my.game.mission = getMission(my.game.theme);
+		my.game.done.push(my.game.theme);
 		my.byMaster('roundReady', {
 			round: my.game.round,
 			theme: my.game.theme,
@@ -95,7 +98,7 @@ exports.turnEnd = function(){
 		my.game.turnTimer = setTimeout(my.turnEnd, 100);
 		return;
 	}
-	if(!my.game.chain) return;
+	if(!my.game.theme) return;
 	
 	my.game.late = true;
 	if(target) if(target.game){
@@ -114,7 +117,7 @@ exports.turnEnd = function(){
 	clearTimeout(my.game.robotTimer);
 };
 exports.submit = function(client, text, data){
-	var score, l, t;
+	var score, l = 'ko', t;
 	var my = this;
 	var tv = (new Date()).getTime();
 	var mgt = my.game.seq[my.game.turn];
@@ -122,55 +125,58 @@ exports.submit = function(client, text, data){
 	if(!mgt) return;
 	if(!mgt.robot) if(mgt != client.id) return;
 	if(!my.game.theme) return;
-	if(my.game.chain.indexOf(text) == -1){
-		l = my.rule.lang;
-		my.game.loading = true;
-		function onDB($doc){
-			function preApproved(){
-				if(my.game.late) return;
-				if(!my.game.chain) return;
-				
-				my.game.loading = false;
-				my.game.late = true;
-				clearTimeout(my.game.turnTimer);
-				t = tv - my.game.turnAt;
-				score = my.getScore(text, t);
-				my.game.chain.push(text);
-				my.game.roundTime -= t;
-				client.game.score += score;
-				client.publish('turnEnd', {
-					ok: true,
-					value: text,
-					mean: $doc.mean,
-					theme: $doc.theme,
-					wc: $doc.type,
-					score: score,
-					bonus: (my.game.mission === true) ? score - my.getScore(text, t, true) : 0,
-					baby: $doc.baby
-				}, true);
-				if(my.game.mission === true){
-					my.game.mission = getMission(my.rule.lang);
+	if(isChainable(text, my.game.theme)){
+		if(my.game.chain.indexOf(text) == -1){
+			my.game.loading = true;
+			function onDB($doc){
+				function preApproved(){
+					if(my.game.late) return;
+					if(!my.game.chain) return;
+					
+					my.game.loading = false;
+					my.game.late = true;
+					clearTimeout(my.game.turnTimer);
+					t = tv - my.game.turnAt;
+					score = my.getScore(text, t);
+					my.game.chain.push(text);
+					my.game.roundTime -= t;
+					client.game.score += score;
+					client.publish('turnEnd', {
+						ok: true,
+						value: text,
+						mean: $doc.mean,
+						theme: $doc.theme,
+						wc: $doc.type,
+						score: score,
+						bonus: (my.game.mission === true) ? score - my.getScore(text, t, true) : 0
+					}, true);
+					if(my.game.mission === true){
+						my.game.mission = getMission(my.game.theme);
+					}
+					setTimeout(my.turnNext, my.game.turnTime / 6);
+					if(!client.robot){
+						client.invokeWordPiece(text, 1);
+					}
 				}
-				setTimeout(my.turnNext, my.game.turnTime / 6);
-				if(!client.robot){
-					client.invokeWordPiece(text, 1);
-					DB.kkutu[l].update([ '_id', text ]).set([ 'hit', $doc.hit + 1 ]).on();
+				function denied(code){
+					my.game.loading = false;
+					client.publish('turnError', { code: code || 404, value: text }, true);
+				}
+				if($doc){
+					if(!my.opts.injeong && ($doc.flag & Const.KOR_FLAG.INJEONG)) denied();
+					else if(my.opts.strict && (!$doc.type.match(Const.KOR_STRICT) || $doc.flag >= 4)) denied(406);
+					else if(my.opts.loanword && ($doc.flag & Const.KOR_FLAG.LOANWORD)) denied(405);
+					else preApproved();
+				}else{
+					denied();
 				}
 			}
-			function denied(code){
-				my.game.loading = false;
-				client.publish('turnError', { code: code || 404, value: text }, true);
-			}
-			if($doc){
-				if($doc.theme.match(toRegex(my.game.theme)) == null) denied(407);
-				else preApproved();
-			}else{
-				denied();
-			}
+			DB.kkutu[l].findOne([ '_id', text ], [ 'type', Const.KOR_GROUP ]).on(onDB);
+		}else{
+			client.publish('turnError', { code: 409, value: text }, true);
 		}
-		DB.kkutu[l].findOne([ '_id', text ]).on(onDB);
 	}else{
-		client.publish('turnError', { code: 409, value: text }, true);
+		client.chat(text);
 	}
 };
 exports.getScore = function(text, delay, ignoreMission){
@@ -199,7 +205,7 @@ exports.readyRobot = function(robot){
 		}else denied();
 	});
 	function denied(){
-		text = "... T.T";
+		text = `${my.game.theme}... T.T`;
 		after();
 	}
 	function pickList(list){
@@ -217,14 +223,28 @@ exports.readyRobot = function(robot){
 		setTimeout(my.turnRobot, delay, robot, text);
 	}
 };
-function toRegex(theme){
-	return new RegExp(`(^|,)${theme}($|,)`);
+function isChainable(text, theme){
+	return toRegex(theme).exec(text) != null;
 }
-function getMission(l){
-	var arr = (l == "ko") ? Const.MISSION_ko : Const.MISSION_en;
+function toRegex(theme){
+	var arg = theme.split('').map(toRegexText).join('');
 	
-	if(!arr) return "-";
-	return arr[Math.floor(Math.random() * arr.length)];
+	return new RegExp(`^(${arg})$`);
+}
+function toRegexText(item){
+	var c = item.charCodeAt();
+	var a = 44032 + 588 * (c - 4352), b = a + 587;
+	
+	return `[\\u${a.toString(16)}-\\u${b.toString(16)}]`;
+}
+function getMission(theme){
+	var flag;
+	
+	if(!theme) return;
+	if(Math.random() < 0.5) flag = 0;
+	else flag = 1;
+	
+	return String.fromCharCode(44032 + 588 * (theme.charCodeAt(flag) - 4352));
 }
 function getAuto(theme, type){
 	/* type
@@ -236,11 +256,15 @@ function getAuto(theme, type){
 	var R = new Lizard.Tail();
 	var bool = type == 1;
 	
-	var aqs = [[ 'theme', toRegex(theme) ]];
+	var aqs = [[ '_id', toRegex(theme) ]];
 	var aft;
 	var raiser;
 	var lst = false;
 	
+	if(!my.opts.injeong) aqs.push([ 'flag', { '$nand': Const.KOR_FLAG.INJEONG } ]);
+	if(my.opts.loanword) aqs.push([ 'flag', { '$nand': Const.KOR_FLAG.LOANWORD } ]);
+	if(my.opts.strict) aqs.push([ 'type', Const.KOR_STRICT ], [ 'flag', { $lte: 3 } ]);
+	else aqs.push([ 'type', Const.KOR_GROUP ]);
 	if(my.game.chain) aqs.push([ '_id', { '$nin': my.game.chain } ]);
 	raiser = DB.kkutu[my.rule.lang].find.apply(this, aqs).limit(bool ? 1 : 123);
 	switch(type){
@@ -264,4 +288,16 @@ function getAuto(theme, type){
 	raiser.on(aft);
 	
 	return R;
+}
+function getTheme(len, ex){
+	var res = "";
+	var c, d;
+	
+	while(len > 0){
+		c = String.fromCharCode(HUNMIN_LIST[Math.floor(Math.random() * HUNMIN_LIST.length)]);
+		if(ex.includes(d = res + c)) continue;
+		res = d;
+		len--;
+	}
+	return res;
 }

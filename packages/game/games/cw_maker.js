@@ -16,10 +16,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-﻿var Prompt = require('prompt');
-var DB = require('../../Web/db');
-var Const = require('../../const');
-var Lizard = require('../../sub/lizard');
+var Prompt = require('prompt');
+var DB = require('kkutu-core/Web/db');
+var Const = require('kkutu-core/const');
+var Lizard = require('kkutu-core/sub/lizard');
 var LANG = 'ko';
 
 Prompt.start();

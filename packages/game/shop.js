@@ -16,9 +16,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var DB	 = require("../Web/db");
+var DB	 = require("kkutu-core/Web/db");
 var File = require("fs");
-var JLog = require("../sub/jjlog");
+var JLog = require("kkutu-core/sub/jjlog");
 
 /* 상품 group 명세
 NIK	이름 스킨; 이름의 색상을 변경합니다.

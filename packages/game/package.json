@@ -1,0 +1,10 @@
+{
+  "name": "kkutu-game",
+  "version": "2.5.1",
+  "private": "true",
+  "author": "JJoriping",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "ws": "^3.3.1"
+  }
+}

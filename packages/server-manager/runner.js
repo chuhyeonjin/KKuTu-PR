@@ -124,7 +124,7 @@ function startServer(){
 	gameServers = [];
 	
 	for(let i=0; i<SETTINGS['game-num-inst']; i++){
-		gameServers.push(new ChildProcess('G', "node", `${__dirname}/../../Server/lib/Game/cluster.js`, i, SETTINGS['game-num-cpu']));
+		gameServers.push(new ChildProcess('G', "node", `${__dirname}/../game/cluster.js`, i, SETTINGS['game-num-cpu']));
 	}
 	exports.send('server-status', getServerStatus());
 }

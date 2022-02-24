@@ -18,9 +18,9 @@
 
 var GUEST_PERMISSION;
 var Cluster = require("cluster");
-var Const = require('../const');
-var Lizard = require('../sub/lizard');
-var JLog = require('../sub/jjlog');
+var Const = require('kkutu-core/const');
+var Lizard = require('kkutu-core/sub/lizard');
+var JLog = require('kkutu-core/sub/jjlog');
 // 망할 셧다운제 var Ajae = require("../sub/ajae");
 var DB;
 var SHOP;
