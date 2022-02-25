@@ -17,7 +17,7 @@
  */
 
 var Web		 = require("request");
-var MainDB	 = require("../db");
+var MainDB	 = require("kkutu-common/db");
 var JLog	 = require("../../sub/jjlog");
 var Const	 = require("../../const");
 

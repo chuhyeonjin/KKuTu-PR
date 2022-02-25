@@ -29,7 +29,7 @@ var Redis	 = require("redis");
 var Parser	 = require("body-parser");
 var DDDoS	 = require("dddos");
 var Server	 = Express();
-var DB		 = require("./db");
+var DB		 = require("kkutu-common/db");
 //볕뉘 수정 구문삭제 (28)
 var JLog	 = require("../sub/jjlog");
 var WebInit	 = require("../sub/webinit");

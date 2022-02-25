@@ -1,0 +1,12 @@
+{
+  "name": "kkutu-common",
+  "version": "2.5.1",
+  "private": "true",
+  "author": "JJoriping",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "pg": "^6.1.2",
+    "pg-escape": "^0.2.0",
+    "connect-redis": "^3.2.0"
+  }
+}

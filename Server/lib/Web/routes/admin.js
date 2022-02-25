@@ -17,7 +17,7 @@
  */
 
 var File	 = require("fs");
-var MainDB	 = require("../db");
+var MainDB	 = require("kkutu-common/db");
 var GLOBAL	 = require("../../../../config/global.json");
 var JLog	 = require("../../sub/jjlog");
 var Lizard	 = require("../../sub/lizard.js");

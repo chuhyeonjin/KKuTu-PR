@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-const MainDB	 = require("../db");
+const MainDB	 = require("kkutu-common/db");
 const JLog	 = require("../../sub/jjlog");
 // const Ajae	 = require("../../sub/ajaejs").checkAjae;
 const passport = require('passport');
