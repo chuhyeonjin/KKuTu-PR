@@ -32,7 +32,7 @@ var Server	 = Express();
 var DB		 = require("kkutu-common/db");
 //볕뉘 수정 구문삭제 (28)
 var JLog	 = require("../sub/jjlog");
-var WebInit	 = require("../sub/webinit");
+var WebInit	 = require("./webinit");
 var GLOBAL	 = require("../../../config/global.json");
 var Secure = require('../sub/secure');
 //볕뉘 수정
