@@ -7,7 +7,7 @@
   "keywords": [
     "kkutu"
   ],
-  "workspaces": ["packages/*", "Server/lib"],
+  "workspaces": ["packages/*"],
   "author": "JJoriping",
   "license": "GPL-3.0"
 }

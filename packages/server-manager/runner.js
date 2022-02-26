@@ -120,7 +120,7 @@ function startServer(){
 	stopServer();
 	if(SETTINGS['server-name']) process.env['KKT_SV_NAME'] = SETTINGS['server-name'];
 	
-	webServer = new ChildProcess('W', "node", `${__dirname}/../../Server/lib/Web/cluster.js`, SETTINGS['web-num-cpu']);
+	webServer = new ChildProcess('W', "node", `${__dirname}/../web/src/cluster.js`, SETTINGS['web-num-cpu']);
 	gameServers = [];
 	
 	for(let i=0; i<SETTINGS['game-num-inst']; i++){
