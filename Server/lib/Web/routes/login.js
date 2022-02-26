@@ -17,8 +17,8 @@
  */
 
 const MainDB	 = require("kkutu-common/db");
-const JLog	 = require("../../sub/jjlog");
-// const Ajae	 = require("../../sub/ajaejs").checkAjae;
+const JLog	 = require("kkutu-common/jjlog");
+// const Ajae	 = require("kkutu-common/ajaejs").checkAjae;
 const passport = require('passport');
 const glob = require('glob-promise');
 const GLOBAL	 = require("../../../../config/global.json");

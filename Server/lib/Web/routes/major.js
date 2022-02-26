@@ -18,7 +18,7 @@
 
 var Web		 = require("request");
 var MainDB	 = require("kkutu-common/db");
-var JLog	 = require("../../sub/jjlog");
+var JLog	 = require("kkutu-common/jjlog");
 var Const	 = require("../../const");
 
 function obtain($user, key, value, term, addValue){

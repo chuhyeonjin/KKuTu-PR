@@ -18,7 +18,7 @@
 
 // 모듈 호출
 
-var colors = require('colors');
+require('colors');
 
 function callLog(text){
 	var date = new Date();

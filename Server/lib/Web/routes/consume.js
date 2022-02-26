@@ -17,7 +17,7 @@
  */
 
 var MainDB	 = require("kkutu-common/db");
-var JLog	 = require("../../sub/jjlog");
+var JLog	 = require("kkutu-common/jjlog");
 
 exports.run = function(Server, page){
 

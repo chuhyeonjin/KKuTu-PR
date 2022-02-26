@@ -31,10 +31,10 @@ var DDDoS	 = require("dddos");
 var Server	 = Express();
 var DB		 = require("kkutu-common/db");
 //볕뉘 수정 구문삭제 (28)
-var JLog	 = require("../sub/jjlog");
+var JLog	 = require("kkutu-common/jjlog");
 var WebInit	 = require("./webinit");
 var GLOBAL	 = require("../../../config/global.json");
-var Secure = require('../sub/secure');
+var Secure = require('kkutu-common/secure');
 //볕뉘 수정
 var passport = require('passport');
 //볕뉘 수정 끝
@@ -58,7 +58,7 @@ WebInit.MOBILE_AVAILABLE = [
 	"portal", "main", "kkutu"
 ];
 
-require("../sub/checkpub");
+require("kkutu-common/checkpub");
 
 JLog.info("<< KKuTu Web >>");
 Server.set('views', __dirname + "/views");

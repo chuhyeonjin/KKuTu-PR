@@ -38,8 +38,8 @@ var Escape = function(str){
 		}
 	});
 };
-var Lizard = require('kkutu-core/sub/lizard');
-var JLog = require('kkutu-core/sub/jjlog');
+var Lizard = require('./lizard');
+var JLog = require('./jjlog');
 
 // (JSON ENDPOINT) KEY
 _Escape.asSKey = function(val){

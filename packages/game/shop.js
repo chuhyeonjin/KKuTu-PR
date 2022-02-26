@@ -18,7 +18,7 @@
 
 var DB	 = require("kkutu-core/Web/db");
 var File = require("fs");
-var JLog = require("kkutu-core/sub/jjlog");
+var JLog = require("kkutu-common/jjlog");
 
 /* 상품 group 명세
 NIK	이름 스킨; 이름의 색상을 변경합니다.

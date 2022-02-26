@@ -17,7 +17,7 @@
  */
 
 var GLOBAL	 = require("../../../config/global.json");
-var JLog	 = require("../sub/jjlog");
+var JLog	 = require("kkutu-common/jjlog");
 var Language = {
 	'ko_KR': require("./lang/ko_KR.json"),
 	'en_US': require("./lang/en_US.json")

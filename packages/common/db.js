@@ -20,10 +20,10 @@ const LANG = [ "ko", "en" ];
 
 var PgPool	 = require("pg").Pool;
 var GLOBAL	 = require("../../config/global.json");
-var JLog	 = require("kkutu-core/sub/jjlog");
+var JLog	 = require("./jjlog");
 var Collection = require("./collection");
-var Lizard = require("kkutu-core/sub/lizard");
-require("kkutu-core/sub/checkpub");
+var Lizard = require("./lizard");
+require("./checkpub");
 
 const FAKE_REDIS_FUNC = () => {
 	var R = new Lizard.Tail();

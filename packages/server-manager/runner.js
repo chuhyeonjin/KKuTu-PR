@@ -17,7 +17,7 @@
  */
 
 const Spawn = require("child_process").spawn;
-const JLog = require("../../Server/lib/sub/jjlog");
+const JLog = require("kkutu-common/jjlog");
 const PKG = require("./package.json");
 const LANG = require("./language.json");
 const SETTINGS = require("../../settings.json");
