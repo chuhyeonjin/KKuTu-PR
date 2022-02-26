@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var Const = require('kkutu-core/const');
+var Const = require('kkutu-common/const');
 var TYL = require('./typing_const');
 var Lizard = require('kkutu-common/lizard');
 var DB;

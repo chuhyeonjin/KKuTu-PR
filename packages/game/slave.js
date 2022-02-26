@@ -18,7 +18,7 @@
 
 var WebSocket = require('ws');
 var File = require('fs');
-var Const = require("kkutu-core/const");
+var Const = require("kkutu-common/const");
 var https = require('https');
 var Secure = require('kkutu-common/secure');
 var Server;

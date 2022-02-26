@@ -24,7 +24,7 @@ var HTTPS_Server;
 // var Heapdump = require("heapdump");
 var KKuTu = require('./kkutu');
 var GLOBAL = require("../../config/global.json");
-var Const = require("kkutu-core/const");
+var Const = require("kkutu-common/const");
 var JLog = require('kkutu-common/jjlog');
 var Secure = require('kkutu-common/secure');
 var Recaptcha = require('./recaptcha');

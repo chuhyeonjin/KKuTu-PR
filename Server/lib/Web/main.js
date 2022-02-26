@@ -38,7 +38,7 @@ var Secure = require('kkutu-common/secure');
 //볕뉘 수정
 var passport = require('passport');
 //볕뉘 수정 끝
-var Const	 = require("../const");
+var Const	 = require("kkutu-common/const");
 var https	 = require('https');
 var fs		 = require('fs');
 

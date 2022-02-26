@@ -21,7 +21,7 @@
  * 보안처리 관련 코드 생성
  */
 
-const Const = require('kkutu-core/const')
+const Const = require('./const')
 const File = require('fs')
 
 module.exports = () => {

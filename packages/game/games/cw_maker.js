@@ -18,7 +18,7 @@
 
 var Prompt = require('prompt');
 var DB = require('kkutu-common/db');
-var Const = require('kkutu-core/const');
+var Const = require('kkutu-common/const');
 var Lizard = require('kkutu-common/lizard');
 var LANG = 'ko';
 
