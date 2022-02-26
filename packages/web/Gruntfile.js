@@ -29,17 +29,17 @@ const LIST = [
 	"in_loginfail"
 ];
 const KKUTU_LIST = [
-	"Web/lib/kkutu/head.js",
-	"Web/lib/kkutu/ready.js",
-	"Web/lib/kkutu/rule_classic.js",
-	"Web/lib/kkutu/rule_jaqwi.js",
-	"Web/lib/kkutu/rule_crossword.js",
-	"Web/lib/kkutu/rule_typing.js",
-	"Web/lib/kkutu/rule_hunmin.js",
-	"Web/lib/kkutu/rule_daneo.js",
-	"Web/lib/kkutu/rule_sock.js",
-	"Web/lib/kkutu/body.js",
-	"Web/lib/kkutu/tail.js"
+	"src/lib/kkutu/head.js",
+	"src/lib/kkutu/ready.js",
+	"src/lib/kkutu/rule_classic.js",
+	"src/lib/kkutu/rule_jaqwi.js",
+	"src/lib/kkutu/rule_crossword.js",
+	"src/lib/kkutu/rule_typing.js",
+	"src/lib/kkutu/rule_hunmin.js",
+	"src/lib/kkutu/rule_daneo.js",
+	"src/lib/kkutu/rule_sock.js",
+	"src/lib/kkutu/body.js",
+	"src/lib/kkutu/tail.js"
 ];
 
 module.exports = function(grunt){
@@ -47,7 +47,7 @@ module.exports = function(grunt){
 	var KKUTU = "Web/public/js/in_game_kkutu.min.js";
 	
 	for(i in LIST){
-		files["Web/public/js/"+LIST[i]+".min.js"] = "Web/lib/"+LIST[i]+".js";
+		files["src/public/js/"+LIST[i]+".min.js"] = "src/lib/"+LIST[i]+".js";
 	}
 	files[KKUTU] = KKUTU_LIST;
 	
@@ -63,7 +63,7 @@ module.exports = function(grunt){
 		concat: {
 			basic: {
 				src: KKUTU_LIST,
-				dest: "Web/lib/in_game_kkutu.js"
+				dest: "src/lib/in_game_kkutu.js"
 			}
 		}
 	});

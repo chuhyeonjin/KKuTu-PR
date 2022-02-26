@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-﻿$lib.Typing.roundReady = function(data){
+$lib.Typing.roundReady = function(data){
 	var i, len = $data.room.game.title.length;
 	var $l;
 	

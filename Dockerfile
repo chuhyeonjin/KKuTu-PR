@@ -2,7 +2,7 @@ FROM node:12
 
 WORKDIR /app
 
-COPY ./Server/setup.js ./Server/
+COPY setup.js ./Server/
 COPY ./Server/package*.json ./Server/
 COPY ./Server/lib/package*.json ./Server/lib/
 COPY ./Server/lib/ ./Server/lib/

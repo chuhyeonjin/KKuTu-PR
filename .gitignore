@@ -1,7 +1,7 @@
 Server/run.bat
 **/node_modules/
-Server/lib/Web/public/js/**
-!Server/lib/Web/public/js/jquery.js
+packages/web/src/public/js/**
+!packages/web/src/public/js/jquery.js
 config/auth.json
 config/global.json
 .vscode/

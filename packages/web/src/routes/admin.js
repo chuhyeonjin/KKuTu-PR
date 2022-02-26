@@ -20,7 +20,7 @@ var File	 = require("fs");
 var MainDB	 = require("kkutu-common/db");
 var GLOBAL	 = require("../../../../config/global.json");
 var JLog	 = require("kkutu-common/jjlog");
-var Lizard	 = require("kkutu-common/lizard.js");
+var Lizard	 = require("kkutu-common/lizard");
 
 exports.run = function(Server, page){
 
