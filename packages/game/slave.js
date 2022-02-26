@@ -38,7 +38,7 @@ if(Const.IS_SECURED) {
 var Master = require('./master');
 var KKuTu = require('./kkutu');
 var Lizard = require('kkutu-common/lizard');
-var MainDB = require('kkutu-core/Web/db');
+var MainDB = require('kkutu-common/db');
 var JLog = require('kkutu-common/jjlog');
 var GLOBAL = require('../../config/global.json');
 

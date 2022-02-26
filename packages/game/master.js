@@ -331,7 +331,7 @@ Cluster.on('message', function(worker, msg){
 });
 exports.init = function(_SID, CHAN){
 	SID = _SID;
-	MainDB = require('kkutu-core/Web/db');
+	MainDB = require('kkutu-common/db');
 	MainDB.ready = function(){
 		JLog.success("Master DB is ready.");
 		

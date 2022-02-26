@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var DB	 = require("kkutu-core/Web/db");
+var DB	 = require("kkutu-common/db");
 var File = require("fs");
 var JLog = require("kkutu-common/jjlog");
 

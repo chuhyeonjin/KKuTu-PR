@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var DB	 = require("kkutu-core/Web/db");
+var DB	 = require("kkutu-common/db");
 var len = Number(process.argv[2] || 10);
 
 DB.ready = function(){
