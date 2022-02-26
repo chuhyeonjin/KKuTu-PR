@@ -20,7 +20,7 @@ const Spawn = require("child_process").spawn;
 const JLog = require("kkutu-common/jjlog");
 const PKG = require("./package.json");
 const LANG = require("./language.json");
-const SETTINGS = require("../../settings.json");
+const SETTINGS = require("../../config/settings.json");
 const SCRIPTS = {
 	'server-on': startServer,
 	'server-off': stopServer,

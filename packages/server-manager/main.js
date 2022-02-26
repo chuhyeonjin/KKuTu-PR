@@ -17,7 +17,7 @@
  */
 
 const PKG = require("./package.json");
-const SETTINGS = require("../../settings.json");
+const SETTINGS = require("../../config/settings.json");
 const Runner = require("./runner.js");
 const { app: App, BrowserWindow, Menu } = require("electron");
 
