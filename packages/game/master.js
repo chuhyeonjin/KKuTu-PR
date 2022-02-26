@@ -27,7 +27,7 @@ var GLOBAL = require("../../config/global.json");
 var Const = require("kkutu-core/const");
 var JLog = require('kkutu-common/jjlog');
 var Secure = require('kkutu-common/secure');
-var Recaptcha = require('kkutu-core/sub/recaptcha');
+var Recaptcha = require('./recaptcha');
 
 var MainDB;
 
