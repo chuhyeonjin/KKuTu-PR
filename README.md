@@ -20,7 +20,7 @@
 ### 설치 방법
 1. 이 레포지토리를 내려받습니다.
 2. [Node.js](https://nodejs.org/) (버전 6이상, **버전 13이하**) 를 [npm](https://www.npmjs.com/) 과 함께 인스툴러를 내려받아 설치하거나 패키지 매니저를 통해 설치합니다. (버전 14 이상 사용 시 DB 관련 문제가 발생합니다. 버전 13의 경우 일부 모듈의 지원이 끊겼으므로 버전 12 사용을 권장합니다.)
-3. 명령 프롬프트 또는 쉘에서 `npm install -g grunt grunt-cli`를 입력해 [grunt](https://grunt.js.com/) 를 설치합니다.
+3. 명령 프롬프트 또는 쉘에서 `npm install -g grunt grunt-cli yarn`를 입력해 [grunt](https://grunt.js.com/) 와 [yarn](https://yarnpkg.com/) 를 설치합니다.
 4. [PostgreSQL](https://www.postgresql.org/) (**버전 11 이하**)를 설치하고, SQL 파일(`./db.sql`)을 데이터베이스에 입력시킵니다. 자세한 방법은 아래의 환경별 설명을 참고하세요.
 
     #### Windows 환경
