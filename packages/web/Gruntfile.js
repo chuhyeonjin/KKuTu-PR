@@ -44,7 +44,7 @@ const KKUTU_LIST = [
 
 module.exports = function(grunt){
 	var i, files = {}, cons = {};
-	var KKUTU = "Web/public/js/in_game_kkutu.min.js";
+	var KKUTU = "src/public/js/in_game_kkutu.min.js";
 	
 	for(i in LIST){
 		files["src/public/js/"+LIST[i]+".min.js"] = "src/lib/"+LIST[i]+".js";
