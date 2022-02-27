@@ -1,4 +1,4 @@
-Server/run.bat
+run.bat
 **/node_modules/
 packages/web/src/public/js/**
 !packages/web/src/public/js/jquery.js
