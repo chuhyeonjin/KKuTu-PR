@@ -1,5 +1,4 @@
-cd ./Server
 node setup
-cd ./lib
-echo npm start > ../run.bat
-grunt default pack
+echo yarn start > run.bat
+cd ./packages/web/
+yarn run pack

@@ -4,6 +4,9 @@
   "private": "true",
   "author": "JJoriping",
   "license": "GPL-3.0",
+  "scripts": {
+    "pack": "grunt default pack"
+  },
   "dependencies": {
     "body-parser": "^1.15.2",
     "connect-redis": "^3.2.0",

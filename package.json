@@ -9,5 +9,8 @@
   ],
   "workspaces": ["packages/*"],
   "author": "JJoriping",
-  "license": "GPL-3.0"
+  "license": "GPL-3.0",
+  "scripts": {
+    "start": "yarn workspace kkutu-server-manager start"
+  }
 }
