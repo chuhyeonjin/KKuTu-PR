@@ -11,6 +11,8 @@
   "author": "JJoriping",
   "license": "GPL-3.0",
   "scripts": {
-    "start": "yarn workspace kkutu-server-manager start"
+    "start": "yarn workspace kkutu-server-manager start",
+    "flush": "del \"run.bat\" && del \"packages\\web\\src\\lib\\in_game_kkutu.js\" && rmdir /S /Q \"./node_modules\"",
+    "setup": "echo \"Please wait... This may take several minutes.\" && yarn && echo \"Completed.\" && echo yarn start > run.bat && cd ./packages/web/ && yarn run pack"
   }
 }

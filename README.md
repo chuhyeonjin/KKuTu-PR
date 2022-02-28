@@ -34,7 +34,7 @@
         - 명령어를 다음 예와 같이 입력할 수 있습니다: `sudo -u postgres psql --quiet main < ./db.sql`
 
         
-5. 배치 파일(`./server-setup.bat`)을 실행시킵니다. (Windows 전용 파일이지만 Linux에서도 작동합니다.)
+5. 명령 프롬프트 또는 쉘에 `yarn run setup`을 입력합니다
 6. 폴더 `./config`에 oAuth 설정 파일(`auth.json`)과 전역 설정 파일(`global.json`)을 **반드시** 만들어 주세요. 본 레포지토리에는 각 파일의 양식이 들어가 있습니다.
 	- PostgreSQL 데이터베이스 서버에 접속하기 위해 설정 파일(`./config/global.json`)에서 `PG_PASS` 값을 **반드시** 수정해야 합니다.
 7. 서버를 실행합니다. 자세한 설명은 아래의 환경별 설명을 참고하세요.
