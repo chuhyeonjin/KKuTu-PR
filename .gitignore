@@ -6,3 +6,4 @@ config/auth.json
 config/global.json
 .vscode/
 .idea/
+coverage/
