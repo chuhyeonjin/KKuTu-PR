@@ -17,36 +17,34 @@
  */
 
 exports.all = function(tails){
-	var R = new exports.Tail([]);
-	var left = tails.length;
-	var i;
+	const R = new exports.Tail();
+	const returns = [];
+	let left = tails.length;
+
+	function onEnded(data, i){
+		returns[i] = data;
+		if(--left === 0) R.go(returns);
+	}
 	
-	if(left == 0) R.go(true);
-	else for(i in tails){
+	if (left === 0) R.go(true);
+	else for(const i in tails){
 		if(tails[i]) tails[i].then(onEnded, Number(i));
 		else left--;
 	}
-	function onEnded(data, __i){
-		R.returns[__i] = data;
-		if(--left == 0) R.go(R.returns);
-	}
-	
+
 	return R;
 };
 
-exports.Tail = function(res){
-	var callback, value = undefined;
-	var _i;
-	
-	this.returns = res;
-	this.go = function(data){
-		if(callback) callback(data, _i);
-		else value = data;
+exports.Tail = function(){
+	let callback
+	let value = undefined;
+	let i;
+
+	this.go = (data) => {
+		callback ? callback(data, i) : value = data;
 	};
-	this.then = function(cb, __i){
-		_i = __i;
-		
-		if(value === undefined) callback = cb;
-		else cb(value, __i);
+	this.then = (cb, _i) => {
+		i = _i;
+		value === undefined ? callback = cb : cb(value, _i);
 	};
 }
