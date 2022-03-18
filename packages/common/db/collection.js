@@ -18,59 +18,9 @@
 
 const DEBUG = true;
 
-var _Escape = require("pg-escape");
-var Escape = function(str){
-	var i = 1;
-	var args = arguments;
-	
-	return str.replace(/%([%sILQkKV])/g, function(_, type){
-		if ('%' == type) return '%';
-
-		var arg = args[i++];
-		switch (type) {
-		  case 's': return _Escape.string(arg);
-		  case 'I': return _Escape.ident(arg);
-		  case 'L': return _Escape.literal(arg);
-		  case 'Q': return _Escape.dollarQuotedString(arg);
-		  case 'k': return _Escape.asSKey(arg);
-		  case 'K': return _Escape.asKey(arg);
-		  case 'V': return _Escape.asValue(arg);
-		}
-	});
-};
-var Lizard = require('./lizard');
-var JLog = require('./jjlog');
-
-// (JSON ENDPOINT) KEY
-_Escape.asSKey = function(val){
-	var c;
-	
-	if(val.indexOf(".") == -1) return _Escape.asKey(val);
-	c = val.split('.').map(function(item, x){ return x ? _Escape.literal(item) : _Escape.ident(item); });
-	
-	return c.slice(0, c.length - 1).join('->') + '->>' + c[c.length - 1];
-};
-// KEY
-_Escape.asKey = function(val){
-	if(val.indexOf(".") == -1){
-		var v = _Escape.ident(val);
-		
-		if(v.charAt(0) == "\"") return v;
-		else return "\"" + v + "\"";
-	}
-	var ar = val.split('.'), aEnd = ar.pop();
-	
-	return ar.map(function(item, x){ return x ? `'${_Escape.literal(item)}'` : _Escape.ident(item); }).join('->') + `->>'${aEnd}'`;
-};
-// VALUE
-_Escape.asValue = function(val){
-	var type = typeof val;
-	
-	if(val instanceof Array) return _Escape.literal("{" + val.join(',') + "}");
-	if(type == 'number') return val;
-	if(type == 'string') return _Escape.literal(val);
-	return _Escape.literal(JSON.stringify(val));
-};
+const Lizard = require('../lizard');
+const JLog = require('../jjlog');
+const Escape = require('./escape')
 
 global.getType = function(obj){
 	if(obj === undefined) return "";

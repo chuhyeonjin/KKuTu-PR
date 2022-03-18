@@ -21,7 +21,7 @@ const LANG = [ "ko", "en" ];
 var PgPool	 = require("pg").Pool;
 var GLOBAL	 = require("../../config/global.json");
 var JLog	 = require("./jjlog");
-var Collection = require("./collection");
+var Collection = require("./db/collection");
 var Lizard = require("./lizard");
 require("./checkpub");
 
