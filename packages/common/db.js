@@ -22,6 +22,7 @@ var PgPool	 = require("pg").Pool;
 var GLOBAL	 = require("../../config/global.json");
 var JLog	 = require("./jjlog");
 var Collection = require("./db/collection");
+const RedisAgent = require("./db/redisAgent");
 var Lizard = require("./lizard");
 require("./checkpub");
 
@@ -61,7 +62,7 @@ function connectPg(noRedis){
 			JLog.error("Error when connect to PostgreSQL server: " + err.toString());
 			return;
 		}
-		var redisAgent = noRedis ? null : new Collection.Agent("Redis", Redis);
+		var redisAgent = noRedis ? null : new RedisAgent(Redis);
 		var mainAgent = new Collection.Agent("Postgres", pgMain);
 
 		var DB = exports;
@@ -71,7 +72,7 @@ function connectPg(noRedis){
 		DB.kkutu_cw = {};
 		DB.kkutu_manner = {};
 
-		DB.redis = noRedis ? FAKE_REDIS : new redisAgent.Table("KKuTu_Score");
+		DB.redis = noRedis ? FAKE_REDIS : redisAgent.Table("KKuTu_Score");
 		for(i in LANG){
 			DB.kkutu[LANG[i]] = new mainAgent.Table("kkutu_"+LANG[i]);
 			DB.kkutu_cw[LANG[i]] = new mainAgent.Table("kkutu_cw_"+LANG[i]);
