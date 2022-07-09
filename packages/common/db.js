@@ -21,7 +21,7 @@ const LANG = [ "ko", "en" ];
 var PgPool	 = require("pg").Pool;
 var GLOBAL	 = require("../../config/global.json");
 var JLog	 = require("./jjlog");
-var Collection = require("./db/collection");
+var PostgresAgent = require("./db/postgresAgent");
 const RedisAgent = require("./db/redisAgent");
 var Lizard = require("./lizard");
 require("./checkpub");
@@ -63,7 +63,7 @@ function connectPg(noRedis){
 			return;
 		}
 		var redisAgent = noRedis ? null : new RedisAgent(Redis);
-		var mainAgent = new Collection.Agent("Postgres", pgMain);
+		var mainAgent = new PostgresAgent(pgMain);
 
 		var DB = exports;
 		var i;

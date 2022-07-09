@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-const collection = require('./collection');
+const PostgresAgent = require('./postgresAgent');
 
 const tableName = 'some-kkutu-table';
 
@@ -25,8 +25,8 @@ const originMock = jest.fn();
 
 beforeEach(() => {
     originMock.mockRestore();
-    const agent = new collection.Agent('Postgres', {query: originMock});
-    table = new agent.PostgresTable(tableName);
+    const agent = new PostgresAgent({query: originMock});
+    table = new agent.Table(tableName);
 });
 
 describe('find & findOne 테스트', () => {
