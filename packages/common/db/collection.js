@@ -18,22 +18,15 @@
 
 const DEBUG = true;
 
-const Lizard = require('../lizard');
 const JLog = require('../jjlog');
 const Escape = require('./escape')
 
 global.getType = function(obj){
 	if(obj === undefined) return "";
-	var s = obj.constructor.toString();
-	
-	return s.slice(9, s.indexOf("("));
+	return obj.constructor.name;
 };
 function query(_q){
-	var i, res = [];
-	
-	for(i in _q) if(_q[i]) res.push(_q[i]);
-	
-	return res;
+	return Array.from(_q).filter(q => q);
 }
 function oQuery(_q){
 	var i, res = [];
@@ -153,258 +146,167 @@ function isDataAvailable(data, chk){
 	
 	return true;
 }
-exports.Agent = function(type, origin){
-	var my = this;
-	this.PostgresTable = function(col){
-		var my = this;
-		var pointer = function(mode, q, flag){
-			var _my = this;
-			/* on: 입력받은 쿼리를 실행시킨다.
-				@f		콜백 함수
-				@chk	정보가 유효할 조건
-				@onFail	유효하지 않은 정보일 경우에 대한 콜백 함수
-			*/
-			_my.second = {};
-			_my.sorts = null;
-			
-			this.on = function(f, chk, onFail){
-				var sql;
-				var sq = _my.second['$set'];
-				var uq;
-				
-				function preCB(err, res){
-					if(err){
-						JLog.error("Error when querying: "+sql);
-						JLog.error("Context: "+err.toString());
-						if(onFail){
-							JLog.log("onFail calling...");
-							onFail(err);
-						}
-						return;
-					}
-					if(res){
-						if(mode == "findOne"){
-							if(res.rows) res = res.rows[0];
-						}else if(res.rows) res = res.rows;
-					}
-					callback(err, res);
-					/*
-					if(mode == "find"){
-						if(_my.sorts){
-							doc = doc.sort(_my.sorts);
-						}
-						doc.toArray(callback);
-					}else callback(err, doc);*/
-				}
-				function callback(err, doc){
-					if(f){
-						if(chk){
-							if(isDataAvailable(doc, chk)) f(doc);
-							else{
-								if(onFail) onFail(doc);
-								else if(DEBUG) throw new Error("The data from "+mode+"["+JSON.stringify(q)+"] was not available.");
-								else JLog.warn("The data from ["+JSON.stringify(q)+"] was not available. Callback has been canceled.");
-							}
-						}else f(doc);
-					}
-				}
-				switch(mode){
-					case "findOne":
-						_my.findLimit = 1;
-					case "find":
-						sql = Escape("SELECT %s FROM %I", sqlSelect(_my.second), col);
-						if(q) sql += Escape(" WHERE %s", sqlWhere(q));
-						if(_my.sorts) sql += Escape(" ORDER BY %s", _my.sorts.map(function(item){
-							return item[0] + ((item[1] == 1) ? ' ASC' : ' DESC');
-						}).join(','));
-						if(_my.findLimit) sql += Escape(" LIMIT %V", _my.findLimit);
-						break;
-					case "insert":
-						sql = Escape("INSERT INTO %I (%s) VALUES (%s)", col, sqlIK(q), sqlIV(q));
-						break;
-					case "update":
-						if(_my.second['$inc']){
-							sq = sqlSet(_my.second['$inc'], true);
-						}else{
-							sq = sqlSet(sq);
-						}
-						sql = Escape("UPDATE %I SET %s", col, sq);
-						if(q) sql += Escape(" WHERE %s", sqlWhere(q));
-						break;
-					case "upsert":
-						// 업데이트 대상을 항상 _id(q의 가장 앞 값)로 가리키는 것으로 가정한다.
-						uq = uQuery(sq, q[0][1]);
-						sql = Escape("INSERT INTO %I (%s) VALUES (%s)", col, sqlIK(uq), sqlIV(uq));
-						sql += Escape(" ON CONFLICT (_id) DO UPDATE SET %s", sqlSet(sq));
-						break;
-					case "remove":
-						sql = Escape("DELETE FROM %I", col);
-						if(q) sql += Escape(" WHERE %s", sqlWhere(q));
-						break;
-					case "createColumn":
-						sql = Escape("ALTER TABLE %I ADD COLUMN %K %I", col, q[0], q[1]);
-						break;
-					default:
-						JLog.warn("Unhandled mode: " + mode);
-				}
-				if(!sql) return JLog.warn("SQL is undefined. This call will be ignored.");
-				// JLog.log("Query: " + sql.slice(0, 100));
-				origin.query(sql, preCB);
-				/*if(_my.findLimit){
-					
-					c = my.source[mode](q, flag, { limit: _my.findLimit }, preCB);
-				}else{
-					c = my.source[mode](q, _my.second, flag, preCB);
-				}*/
-				return sql;
-			};
-			// limit: find 쿼리에 걸린 문서를 필터링하는 지침을 정의한다.
-			this.limit = function(_data){
-				if(global.getType(_data) == "Number"){
-					_my.findLimit = _data;
-				}else{
-					_my.second = query(arguments);
-					_my.second.push([ '_id', true ]);
-				}
-				return this;
-			};
-			this.sort = function(_data){
-				_my.sorts = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
-				return this;
-			};
-			// set: update 쿼리에 걸린 문서를 수정하는 지침을 정의한다.
-			this.set = function(_data){
-				_my.second['$set'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
-				return this;
-			};
-			// soi: upsert 쿼리에 걸린 문서에서, insert될 경우의 값을 정한다. (setOnInsert)
-			this.soi = function(_data){
-				_my.second['$setOnInsert'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
-				return this;
-			};
-			// inc: update 쿼리에 걸린 문서의 특정 값을 늘인다.
-			this.inc = function(_data){
-				_my.second['$inc'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
-				return this;
-			};
-		};
 
-		my.source = col;
-		my.findOne = function(){
-			return new pointer("findOne", query(arguments));
+const pointer = function(origin, col, mode, q, flag){
+	var _my = this;
+	/* on: 입력받은 쿼리를 실행시킨다.
+        @f		콜백 함수
+        @chk	정보가 유효할 조건
+        @onFail	유효하지 않은 정보일 경우에 대한 콜백 함수
+    */
+	_my.second = {};
+	_my.sorts = null;
+
+	this.on = function(f, chk, onFail){
+		var sql;
+		var sq = _my.second['$set'];
+		var uq;
+
+		function preCB(err, res){
+			if(err){
+				JLog.error("Error when querying: "+sql);
+				JLog.error("Context: "+err.toString());
+				if(onFail){
+					JLog.log("onFail calling...");
+					onFail(err);
+				}
+				return;
+			}
+			if(res){
+				if(mode == "findOne"){
+					if(res.rows) res = res.rows[0];
+				}else if(res.rows) res = res.rows;
+			}
+			callback(err, res);
+			/*
+            if(mode == "find"){
+                if(_my.sorts){
+                    doc = doc.sort(_my.sorts);
+                }
+                doc.toArray(callback);
+            }else callback(err, doc);*/
+		}
+		function callback(err, doc){
+			if(f){
+				if(chk){
+					if(isDataAvailable(doc, chk)) f(doc);
+					else{
+						if(onFail) onFail(doc);
+						else if(DEBUG) throw new Error("The data from "+mode+"["+JSON.stringify(q)+"] was not available.");
+						else JLog.warn("The data from ["+JSON.stringify(q)+"] was not available. Callback has been canceled.");
+					}
+				}else f(doc);
+			}
+		}
+		switch(mode){
+			case "findOne":
+				_my.findLimit = 1;
+			case "find":
+				sql = Escape("SELECT %s FROM %I", sqlSelect(_my.second), col);
+				if(q) sql += Escape(" WHERE %s", sqlWhere(q));
+				if(_my.sorts) sql += Escape(" ORDER BY %s", _my.sorts.map(function(item){
+					return item[0] + ((item[1] == 1) ? ' ASC' : ' DESC');
+				}).join(','));
+				if(_my.findLimit) sql += Escape(" LIMIT %V", _my.findLimit);
+				break;
+			case "insert":
+				sql = Escape("INSERT INTO %I (%s) VALUES (%s)", col, sqlIK(q), sqlIV(q));
+				break;
+			case "update":
+				if(_my.second['$inc']){
+					sq = sqlSet(_my.second['$inc'], true);
+				}else{
+					sq = sqlSet(sq);
+				}
+				sql = Escape("UPDATE %I SET %s", col, sq);
+				if(q) sql += Escape(" WHERE %s", sqlWhere(q));
+				break;
+			case "upsert":
+				// 업데이트 대상을 항상 _id(q의 가장 앞 값)로 가리키는 것으로 가정한다.
+				uq = uQuery(sq, q[0][1]);
+				sql = Escape("INSERT INTO %I (%s) VALUES (%s)", col, sqlIK(uq), sqlIV(uq));
+				sql += Escape(" ON CONFLICT (_id) DO UPDATE SET %s", sqlSet(sq));
+				break;
+			case "remove":
+				sql = Escape("DELETE FROM %I", col);
+				if(q) sql += Escape(" WHERE %s", sqlWhere(q));
+				break;
+			case "createColumn":
+				sql = Escape("ALTER TABLE %I ADD COLUMN %K %I", col, q[0], q[1]);
+				break;
+			default:
+				JLog.warn("Unhandled mode: " + mode);
+		}
+		if(!sql) return JLog.warn("SQL is undefined. This call will be ignored.");
+		// JLog.log("Query: " + sql.slice(0, 100));
+		origin.query(sql, preCB);
+		/*if(_my.findLimit){
+
+            c = my.source[mode](q, flag, { limit: _my.findLimit }, preCB);
+        }else{
+            c = my.source[mode](q, _my.second, flag, preCB);
+        }*/
+		return sql;
+	};
+	// limit: find 쿼리에 걸린 문서를 필터링하는 지침을 정의한다.
+	this.limit = function(_data){
+		if(global.getType(_data) == "Number"){
+			_my.findLimit = _data;
+		}else{
+			_my.second = query(arguments);
+			_my.second.push([ '_id', true ]);
+		}
+		return this;
+	};
+	this.sort = function(_data){
+		_my.sorts = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
+		return this;
+	};
+	// set: update 쿼리에 걸린 문서를 수정하는 지침을 정의한다.
+	this.set = function(_data){
+		_my.second['$set'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
+		return this;
+	};
+	// soi: upsert 쿼리에 걸린 문서에서, insert될 경우의 값을 정한다. (setOnInsert)
+	this.soi = function(_data){
+		_my.second['$setOnInsert'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
+		return this;
+	};
+	// inc: update 쿼리에 걸린 문서의 특정 값을 늘인다.
+	this.inc = function(_data){
+		_my.second['$inc'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
+		return this;
+	};
+};
+
+exports.Agent = function(type, origin){
+	this.PostgresTable = function(col){
+		this.source = col;
+		this.findOne = function(){
+			return new pointer(origin, col, "findOne", query(arguments));
 		};
-		my.find = function(){
-			return new pointer("find", query(arguments));
+		this.find = function(){
+			return new pointer(origin, col, "find", query(arguments));
 		};
-		my.insert = function(){
-			return new pointer("insert", query(arguments));
+		this.insert = function(){
+			return new pointer(origin, col, "insert", query(arguments));
 		};
-		my.update = function(){
-			return new pointer("update", query(arguments));
+		this.update = function(){
+			return new pointer(origin, col, "update", query(arguments));
 		};
-		my.upsert = function(){
-			return new pointer("upsert", query(arguments));
+		this.upsert = function(){
+			return new pointer(origin, col, "upsert", query(arguments));
 		};
-		my.remove = function(){
-			return new pointer("remove", query(arguments));
+		this.remove = function(){
+			return new pointer(origin, col, "remove", query(arguments));
 		};
-		my.createColumn = function(name, type){
-			return new pointer("createColumn", [ name, type ]);
+		this.createColumn = function(name, type){
+			return new pointer(origin, col, "createColumn", [ name, type ]);
 		};
-		my.direct = function(q, f){
-			JLog.warn("Direct query: " + q);
-			origin.query(q, f);
+		this.direct = function(query, callback){
+			JLog.warn("Direct query: " + query);
+			origin.query(query, callback);
 		};
 	};
 	this.Table = this[`${type}Table`];
 };
-/*exports.Mongo = function(col){
-	var my = this;
-	var pointer = function(mode, q, flag){
-		var _my = this;
-		_my.second = {};
-		_my.sorts = null;
-		
-		this.on = function(f, chk, onFail){
-			var c;
-			
-			function preCB(err, doc){
-				if(mode == "find"){
-					if(_my.sorts){
-						doc = doc.sort(_my.sorts);
-					}
-					doc.toArray(callback);
-				}else callback(err, doc);
-			}
-			function callback(err, doc){
-				if(err){
-					JLog.error("Error when querying: "+JSON.stringify(q));
-					JLog.error("Context: "+err.toString());
-					return;
-				}
-				
-				if(f){
-					if(chk){
-						if(isDataAvailable(doc, chk)) f(doc);
-						else{
-							if(onFail) onFail(doc);
-							else if(DEBUG) throw new Error("The data from "+mode+"["+JSON.stringify(q)+"] was not available.");
-							else JLog.warn("The data from ["+JSON.stringify(q)+"] was not available. Callback has been canceled.");
-						}
-					}else f(doc);
-				}
-			}
-			
-			if(_my.findLimit){
-				c = my.source[mode](q, flag, { limit: _my.findLimit }, preCB);
-			}else{
-				c = my.source[mode](q, _my.second, flag, preCB);
-			}
-		};
-		// limit: find 쿼리에 걸린 문서를 필터링하는 지침을 정의한다.
-		this.limit = function(_data){
-			if(global.getType(_data) == "Number"){
-				_my.findLimit = _data;
-			}else{
-				_my.second = query(arguments);
-			}
-			return this;
-		};
-		this.sort = function(_data){
-			_my.sorts = query(arguments);
-			return this;
-		};
-		// set: update 쿼리에 걸린 문서를 수정하는 지침을 정의한다.
-		this.set = function(_data){
-			_my.second['$set'] = (global.getType(_data) == "Array") ? query(arguments) : _data;
-			return this;
-		};
-		// soi: upsert 쿼리에 걸린 문서에서, insert될 경우의 값을 정한다. (setOnInsert)
-		this.soi = function(_data){
-			_my.second['$setOnInsert'] = (global.getType(_data) == "Array") ? query(arguments) : _data;
-			return this;
-		};
-		// inc: update 쿼리에 걸린 문서의 특정 값을 늘인다.
-		this.inc = function(_data){
-			_my.second = { $inc: (global.getType(_data) == "Array") ? query(arguments) : _data };
-			return this;
-		};
-	};
-
-	my.source = col;
-	my.findOne = function(){
-		return new pointer("findOne", query(arguments));
-	};
-	my.find = function(){
-		return new pointer("find", query(arguments));
-	};
-	my.update = function(){
-		return new pointer("update", query(arguments));
-	};
-	my.upsert = function(){
-		return new pointer("update", query(arguments), { upsert: true });
-	};
-	my.remove = function(){
-		return new pointer("remove", query(arguments));
-	};
-};*/
