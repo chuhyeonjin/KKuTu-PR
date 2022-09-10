@@ -131,13 +131,11 @@ describe('createColumn 테스트', () => {
     });
 });
 
-
-
 describe('direct 테스트', () => {
     test('테이블에서 direct로 쿼리', () => {
         const JLog = require('../jjlog');
         const JLogWarnMock = jest.fn(() => {});
-        JLog.warn = JLogWarnMock
+        JLog.warn = JLogWarnMock;
 
         const fakeCallback = () => {};
         table.direct(`SELECT * FROM "AAA"`, fakeCallback);
@@ -148,4 +146,54 @@ describe('direct 테스트', () => {
         expect(JLogWarnMock).toBeCalledWith(`Direct query: SELECT * FROM \"AAA\"`)
     })
 });
+
+describe('콜백 작동 테스트', () => {
+    test('쿼리중 오류가 발생', () => {
+        const JLog = require('../jjlog');
+        const JLogErrorMock = jest.fn(() => {});
+        JLog.error = JLogErrorMock;
+
+        const dbError = `error: relation "${tableName}" does not exist`
+
+        originMock.mockImplementation((_, callback) => {
+            callback(dbError, {});
+        });
+        
+        const onFail = jest.fn(() => {});
+
+        table.find().on(() => {}, {}, onFail);
+
+        expect(JLogErrorMock.mock.calls[0][0]).toEqual(`Error when querying: SELECT * FROM "some-kkutu-table" WHERE TRUE`);
+        expect(JLogErrorMock.mock.calls[1][0]).toEqual(`Context: ${dbError}`);
+        expect(onFail.mock.lastCall[0]).toEqual(dbError);
+    });
+
+    test('정상적으로 findOne 쿼리 작동', () => {
+        const onSuccess = jest.fn(() => {});
+
+        const data = {rows : [{age: 1, name: 'c'}]}
+
+        originMock.mockImplementation((_, callback) => {
+            callback(undefined, data);
+        });
+
+        table.findOne().on(onSuccess);
+
+        expect(onSuccess.mock.lastCall[0]).toEqual(data.rows[0]);
+    });
+
+    test('정상적으로 find 쿼리 작동', () => {
+        const onSuccess = jest.fn(() => {});
+
+        const data = {rows : [{age: 1, name: 'c'}, {age: 2, name:'cc'}]}
+
+        originMock.mockImplementation((_, callback) => {
+            callback(undefined, data);
+        });
+
+        table.find().on(onSuccess);
+
+        expect(onSuccess.mock.lastCall[0]).toEqual(data.rows);
+    });
+})
 

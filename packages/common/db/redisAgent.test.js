@@ -97,12 +97,13 @@ describe('RedisTable 테스트', () => {
             }
         })
     });
-
+    
+    // TODO: zrevrange 에서 res가 없을경우 & target이 상위권일 경우 처리 필요
     test('getSurround 테스트', done => {
         const data = {
             targetId: 'some-id-53022',
             range: 5,
-            rank: 10,
+            targetRank: 10,
             zrevrangeResult: [
                 'some-id-gaegosu', 12357777,
                 'some-id-12345', 53022,
@@ -121,7 +122,7 @@ describe('RedisTable 테스트', () => {
                 {id: 'some-id-53022', rank: 10, score: 1234}
             ]
         }
-        const zrevrankMock = jest.fn((_, callback) => { callback(undefined, data.rank) });
+        const zrevrankMock = jest.fn((_, callback) => { callback(undefined, data.targetRank) });
         const zrevrangeMock = jest.fn((_, callback) => { callback(undefined, data.zrevrangeResult) });
         const agent = new Agent({'zrevrank': zrevrankMock, 'zrevrange': zrevrangeMock});
         const table = agent.Table(redisKey);

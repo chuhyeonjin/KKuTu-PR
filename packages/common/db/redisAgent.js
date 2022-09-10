@@ -28,62 +28,66 @@ module.exports = class {
     }
 }
 
-const RedisTable = function(origin, key){
-    var my = this;
+class RedisTable {
+    constructor(origin, key) {
+        this.origin = origin;
+        this.key = key;
+    }
 
-    my.putGlobal = function(id, score){
-        var R = new Lizard.Tail();
+    putGlobal(id, score) {
+        const R = new Lizard.Tail();
 
-        origin.zadd([ key, score, id ], function(err, res){
+        this.origin.zadd([ this.key, score, id ], () => {
             R.go(id);
         });
         return R;
-    };
-    my.getGlobal = function(id){
-        var R = new Lizard.Tail();
+    }
 
-        origin.zrevrank([ key, id ], function(err, res){
+    getGlobal(id) {
+        const R = new Lizard.Tail();
+
+        this.origin.zrevrank([ this.key, id ], (_, res) => {
             R.go(res);
         });
         return R;
-    };
-    my.getPage = function(pg, lpp){
-        var R = new Lizard.Tail();
+    }
 
-        origin.zrevrange([ key, pg * lpp, (pg + 1) * lpp - 1, "WITHSCORES" ], function(err, res){
-            var A = [];
-            var rank = pg * lpp;
-            var i, len = res.length;
+    getPage(page, itemsPerPage) {
+        const R = new Lizard.Tail();
 
-            for(i=0; i<len; i += 2){
-                A.push({ id: res[i], rank: rank++, score: res[i+1] });
-            }
-            R.go({ page: pg, data: A });
-        });
-        return R;
-    };
-    my.getSurround = function(id, rv){
-        var R = new Lizard.Tail();
-        var i;
-
-        rv = rv || 8;
-        origin.zrevrank([ key, id ], function(err, res){
-            // 앞 범위가 더 큼, 예) rv = 5 / res = 10 , range = [6, 10];
-            // TODO: res가 rv / 2 이하일 경우 구분해서 적용하면 해결 가능
-            var range = [ Math.max(0, res - Math.round(rv / 2 + 1)), 0 ];
-
-            range[1] = range[0] + rv - 1;
-            origin.zrevrange([ key, range[0], range[1], "WITHSCORES" ], function(err, res){
-                if(!res) return R.go({ target: id, data: [] });
-
-                var A = [], len = res.length;
-
-                for(i=0; i<len; i += 2){
-                    A.push({ id: res[i], rank: range[0]++, score: res[i+1] });
-                }
-                R.go({ target: id, data: A });
+        this.origin.zrevrange([ this.key, page * itemsPerPage, (page + 1) * itemsPerPage - 1, "WITHSCORES" ], (_, res) => {
+            R.go({
+                'page': page,
+                data: new Array(res.length / 2).fill().map((_, i) => ({
+                    id: res[i * 2],
+                    rank: page * itemsPerPage + i,
+                    score: res[i * 2 + 1],
+                }))
             });
         });
         return R;
-    };
+    }
+
+    getSurround(targetId, range = 8) {
+        const R = new Lizard.Tail();
+
+        this.origin.zrevrank([ this.key, targetId ], (_, targetRank) => {
+            // 앞 범위가 더 큼, 예) range = 5 / targetRank = 10 , rangeFrom = 6 /  rangeUntil = 10;
+            // TODO: res가 range / 2 이하일 경우 구분해서 적용하면 해결 가능
+            const rangeFrom = Math.max(0, targetRank - Math.round(range / 2 + 1));
+            const rangeUntil = rangeFrom + range - 1
+
+            this.origin.zrevrange([ this.key, rangeFrom, rangeUntil, "WITHSCORES" ], (_, res) => {
+                R.go({
+                    target: targetId,
+                    data: res ? new Array(res.length / 2).fill().map((_, i) => ({
+                        id: res[i * 2],
+                        rank: i + rangeFrom,
+                        score: res[i * 2 + 1]
+                    })) : []
+                });
+            });
+        });
+        return R;
+    }
 };

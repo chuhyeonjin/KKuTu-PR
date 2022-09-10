@@ -29,23 +29,23 @@ function query(_q){
 	return Array.from(_q).filter(q => q);
 }
 function oQuery(_q){
-	var i, res = [];
+	const res = [];
 	
-	for(i in _q) if(_q[i]) res.push([ i, _q[i] ]);
+	for(const i in _q) if(_q[i]) res.push([ i, _q[i] ]);
 	
 	return res;
 }
 function uQuery(q, id){
-	var i, res = [], noId = true;
+	let res = [], noId = true;
 	
-	for(i in q){
-		var c = q[i][0];
-		
-		if(q[i][0] == "_id"){
+	for(const i in q){
+		let c = q[i][0];
+
+		if(q[i][0] === "_id"){
 			noId = false;
 		}else if(c.split) if((c = c.split('.')).length > 1){
-			var jo = {}, j = jo;
-			
+			let jo = {}, j = jo;
+
 			q[i][0] = c.shift();
 			while(c.length > 1){
 				j = j[c.shift()] = {};
@@ -70,8 +70,8 @@ function sqlWhere(q){
 	if(!Object.keys(q).length) return "TRUE";
 	
 	function wSearch(item){
-		var c;
-		
+		let c;
+
 		if((c = item[1]['$not']) !== undefined) return Escape("NOT (%s)", wSearch([ item[0], c ]));
 		if((c = item[1]['$nand']) !== undefined) return Escape("%K & %V = 0", item[0], c);
 		if((c = item[1]['$lte']) !== undefined) return Escape("%K<=%V", item[0], c);
@@ -94,52 +94,44 @@ function sqlSet(q, inc){
 		JLog.warn("[sqlSet] Invalid query.");
 		return null;
 	}
-	var doN = inc ? function(k, v){
-		return Escape("%K=%K+%V", k, k, v);
-	} : function(k, v){
-		return Escape("%K=%V", k, v);
-	}, doJ = inc ? function(k, p, ok, v){
-		JLog.warn("[sqlSet] Cannot increase a value in JSON object.");
-		return null; //Escape("%K=jsonb_set(%K,%V,CAST(CAST(%k AS bigint)+%V AS text),true)", k, k, p, ok, Number(v));
-	} : function(k, p, ok, v){
-		return Escape("%K=jsonb_set(%K,%V,%V,true)", k, k, p, v);
-	}
-	return q.map(function(item){
-		var c = item[0].split('.');
-		
-		if(c.length == 1){
-			return doN(item[0], item[1]);
+	const doNumber =
+		inc ? (k, v) => Escape("%K=%K+%V", k, k, v) :
+			  (k, v) => Escape("%K=%V", k, v);
+	const doJson =
+		inc ? () => {
+			JLog.warn("[sqlSet] Cannot increase a value in JSON object.");
+			return null;
+		} :
+			(k, p, ok, v) => Escape("%K=jsonb_set(%K,%V,%V,true)", k, k, p, v);
+
+	return q.map((item) => {
+		const c = item[0].split('.');
+
+		if(c.length === 1){
+			return doNumber(item[0], item[1]);
 		}
 		/* JSON 값 내부를 수정하기
 			1. UPSERT 할 수 없다.
 			2. 한 쿼리에 여러 값을 수정할 수 없다.
 		*/
 		if(typeof item[1] == 'number') item[1] = item[1].toString();
-		return doJ(c[0], c.slice(1), item[0], item[1]);
+		return doJson(c[0], c.slice(1), item[0], item[1]);
 	}).join(', ');
 }
 function sqlIK(q){
-	return q.map(function(item){
-		return Escape("%K", item[0]);
-	}).join(', ');
+	return q.map((item) => Escape("%K", item[0])).join(', ');
 }
 function sqlIV(q){
-	return q.map(function(item){
-		return Escape("%V", item[1]);
-	}).join(', ');
+	return q.map((item) => Escape("%V", item[1])).join(', ');
 }
-function isDataAvailable(data, chk){
-	var i, j;
-	var path;
-	var cursor;
-	
+function isDataAvailable(data, condition){
 	if(data == null) return false;
-	for(i in chk){
-		cursor = data;
-		path = i.split(".");
-		for(j in path){
-			if(cursor[path[j]] === null) return false;
-			if(cursor.hasOwnProperty(path[j]) == chk[i]) cursor = data[path[j]];
+	for(const i in condition){
+		let cursor = data;
+		const pathList = i.split(".");
+		for(const path of pathList){
+			if(cursor[path] === null) return false;
+			if(cursor.hasOwnProperty(path) === condition[i]) cursor = data[path];
 			else return false;
 		}
 	}
@@ -147,22 +139,84 @@ function isDataAvailable(data, chk){
 	return true;
 }
 
-const pointer = function(origin, col, mode, q, flag){
-	var _my = this;
+class pointer {
+	constructor(origin, col, mode, q) {
+		this.origin = origin;
+		this.col = col;
+		this.mode = mode;
+		this.q = q;
+
+		this.second = {};
+		this.sorts = null;
+	}
+
 	/* on: 입력받은 쿼리를 실행시킨다.
-        @f		콜백 함수
-        @chk	정보가 유효할 조건
-        @onFail	유효하지 않은 정보일 경우에 대한 콜백 함수
-    */
-	_my.second = {};
-	_my.sorts = null;
+			@f		콜백 함수
+			@chk	정보가 유효할 조건
+			@onFail	유효하지 않은 정보일 경우에 대한 콜백 함수
+		*/
+	on(onSuccess, chk, onFail) {
+		let sql;
 
-	this.on = function(f, chk, onFail){
-		var sql;
-		var sq = _my.second['$set'];
-		var uq;
+		switch(this.mode){
+			case "findOne":
+				this.findLimit = 1;
+			case "find":
+				sql = Escape("SELECT %s FROM %I", sqlSelect(this.second), this.col);
+				if(this.q) sql += Escape(" WHERE %s", sqlWhere(this.q));
+				if(this.sorts) sql += Escape(" ORDER BY %s", this.sorts.map(function(item){
+					return item[0] + ((item[1] === 1) ? ' ASC' : ' DESC');
+				}).join(','));
+				if(this.findLimit) sql += Escape(" LIMIT %V", this.findLimit);
+				break;
+			case "insert":
+				sql = Escape("INSERT INTO %I (%s) VALUES (%s)", this.col, sqlIK(this.q), sqlIV(this.q));
+				break;
+			case "update":
+				const sq = this.second['$inc'] ? sqlSet(this.second['$inc'], true) : sqlSet(this.second['$set']);
+				sql = Escape("UPDATE %I SET %s", this.col, sq);
+				if(this.q) sql += Escape(" WHERE %s", sqlWhere(this.q));
+				break;
+			case "upsert":
+				// 업데이트 대상을 항상 _id(q의 가장 앞 값)로 가리키는 것으로 가정한다.
+				const uq = uQuery(this.second['$set'], this.q[0][1]);
+				sql = Escape("INSERT INTO %I (%s) VALUES (%s)", this.col, sqlIK(uq), sqlIV(uq));
+				sql += Escape(" ON CONFLICT (_id) DO UPDATE SET %s", sqlSet(this.second['$set']));
+				break;
+			case "remove":
+				sql = Escape("DELETE FROM %I", this.col);
+				if(this.q) sql += Escape(" WHERE %s", sqlWhere(this.q));
+				break;
+			case "createColumn":
+				sql = Escape("ALTER TABLE %I ADD COLUMN %K %I", this.col, this.q[0], this.q[1]);
+				break;
+			default:
+				JLog.warn("Unhandled mode: " + this.mode);
+		}
+		if(!sql) return JLog.warn("SQL is undefined. This call will be ignored.");
 
-		function preCB(err, res){
+		const callback = (doc)=>{
+			if(!onSuccess) return;
+			if(!chk) {
+				onSuccess(doc);
+				return;
+			}
+
+			if(isDataAvailable(doc, chk)) {
+				onSuccess(doc);
+				return;
+			}
+
+			if(onFail) {
+				onFail(doc);
+				return;
+			}
+
+			if(DEBUG) throw new Error("The data from "+this.mode+"["+JSON.stringify(this.q)+"] was not available.");
+			else JLog.warn("The data from ["+JSON.stringify(this.q)+"] was not available. Callback has been canceled.");
+		}
+
+		this.origin.query(sql, (err, res) => {
 			if(err){
 				JLog.error("Error when querying: "+sql);
 				JLog.error("Context: "+err.toString());
@@ -172,112 +226,45 @@ const pointer = function(origin, col, mode, q, flag){
 				}
 				return;
 			}
-			if(res){
-				if(mode == "findOne"){
-					if(res.rows) res = res.rows[0];
-				}else if(res.rows) res = res.rows;
-			}
-			callback(err, res);
-			/*
-            if(mode == "find"){
-                if(_my.sorts){
-                    doc = doc.sort(_my.sorts);
-                }
-                doc.toArray(callback);
-            }else callback(err, doc);*/
-		}
-		function callback(err, doc){
-			if(f){
-				if(chk){
-					if(isDataAvailable(doc, chk)) f(doc);
-					else{
-						if(onFail) onFail(doc);
-						else if(DEBUG) throw new Error("The data from "+mode+"["+JSON.stringify(q)+"] was not available.");
-						else JLog.warn("The data from ["+JSON.stringify(q)+"] was not available. Callback has been canceled.");
-					}
-				}else f(doc);
-			}
-		}
-		switch(mode){
-			case "findOne":
-				_my.findLimit = 1;
-			case "find":
-				sql = Escape("SELECT %s FROM %I", sqlSelect(_my.second), col);
-				if(q) sql += Escape(" WHERE %s", sqlWhere(q));
-				if(_my.sorts) sql += Escape(" ORDER BY %s", _my.sorts.map(function(item){
-					return item[0] + ((item[1] == 1) ? ' ASC' : ' DESC');
-				}).join(','));
-				if(_my.findLimit) sql += Escape(" LIMIT %V", _my.findLimit);
-				break;
-			case "insert":
-				sql = Escape("INSERT INTO %I (%s) VALUES (%s)", col, sqlIK(q), sqlIV(q));
-				break;
-			case "update":
-				if(_my.second['$inc']){
-					sq = sqlSet(_my.second['$inc'], true);
-				}else{
-					sq = sqlSet(sq);
-				}
-				sql = Escape("UPDATE %I SET %s", col, sq);
-				if(q) sql += Escape(" WHERE %s", sqlWhere(q));
-				break;
-			case "upsert":
-				// 업데이트 대상을 항상 _id(q의 가장 앞 값)로 가리키는 것으로 가정한다.
-				uq = uQuery(sq, q[0][1]);
-				sql = Escape("INSERT INTO %I (%s) VALUES (%s)", col, sqlIK(uq), sqlIV(uq));
-				sql += Escape(" ON CONFLICT (_id) DO UPDATE SET %s", sqlSet(sq));
-				break;
-			case "remove":
-				sql = Escape("DELETE FROM %I", col);
-				if(q) sql += Escape(" WHERE %s", sqlWhere(q));
-				break;
-			case "createColumn":
-				sql = Escape("ALTER TABLE %I ADD COLUMN %K %I", col, q[0], q[1]);
-				break;
-			default:
-				JLog.warn("Unhandled mode: " + mode);
-		}
-		if(!sql) return JLog.warn("SQL is undefined. This call will be ignored.");
-		// JLog.log("Query: " + sql.slice(0, 100));
-		origin.query(sql, preCB);
-		/*if(_my.findLimit){
 
-            c = my.source[mode](q, flag, { limit: _my.findLimit }, preCB);
-        }else{
-            c = my.source[mode](q, _my.second, flag, preCB);
-        }*/
+			if(res && res.rows){
+				if(this.mode === "findOne") res = res.rows[0];
+				else res = res.rows;
+			}
+
+			callback(res);
+		});
 		return sql;
 	};
+
 	// limit: find 쿼리에 걸린 문서를 필터링하는 지침을 정의한다.
-	this.limit = function(_data){
-		if(global.getType(_data) == "Number"){
-			_my.findLimit = _data;
-		}else{
-			_my.second = query(arguments);
-			_my.second.push([ '_id', true ]);
+	limit(_data){
+		if (global.getType(_data) === "Number"){
+			this.findLimit = _data;
+		} else{
+			this.second = query(arguments);
+			this.second.push([ '_id', true ]);
 		}
 		return this;
 	};
-	this.sort = function(_data){
-		_my.sorts = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
+
+	sort(_data){
+		this.sorts = (global.getType(_data) === "Array") ? query(arguments) : oQuery(_data);
 		return this;
 	};
+
 	// set: update 쿼리에 걸린 문서를 수정하는 지침을 정의한다.
-	this.set = function(_data){
-		_my.second['$set'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
+	set(_data){
+		this.second['$set'] = (global.getType(_data) === "Array") ? query(arguments) : oQuery(_data);
 		return this;
 	};
-	// soi: upsert 쿼리에 걸린 문서에서, insert될 경우의 값을 정한다. (setOnInsert)
-	this.soi = function(_data){
-		_my.second['$setOnInsert'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
-		return this;
-	};
+
 	// inc: update 쿼리에 걸린 문서의 특정 값을 늘인다.
-	this.inc = function(_data){
-		_my.second['$inc'] = (global.getType(_data) == "Array") ? query(arguments) : oQuery(_data);
+	inc(_data) {
+		this.second['$inc'] = (global.getType(_data) === "Array") ? query(arguments) : oQuery(_data);
 		return this;
-	};
-};
+	}
+}
 
 module.exports = function(origin){
 	this.Table = function(col){
