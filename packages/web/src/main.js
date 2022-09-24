@@ -16,132 +16,123 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/**
- * 볕뉘 수정사항:
- * Login 을 Passport 로 수행하기 위한 수정
- */
+const Express	        = require("express");
+const DB		        = require("kkutu-common/db");
+const JLog	            = require("kkutu-common/jjlog");
+const Secure            = require('kkutu-common/secure');
+const Const	            = require("kkutu-common/const");
+const https	            = require('https');
+const expressInit       = require('./expressInit');
+const gameClientManager = require('./gameClientManager');
+require("kkutu-common/checkpub");
 
-var WS		 = require("ws");
-var Express	 = require("express");
-var Exession = require("express-session");
-var Redission= require("connect-redis")(Exession);
-var Redis	 = require("redis");
-var Parser	 = require("body-parser");
-var DDDoS	 = require("dddos");
-var Server	 = Express();
-var DB		 = require("kkutu-common/db");
-//볕뉘 수정 구문삭제 (28)
-var JLog	 = require("kkutu-common/jjlog");
-var WebInit	 = require("./webinit");
-var GLOBAL	 = require("../../../config/global.json");
-var Secure = require('kkutu-common/secure');
-//볕뉘 수정
-var passport = require('passport');
-//볕뉘 수정 끝
-var Const	 = require("kkutu-common/const");
-var https	 = require('https');
-var fs		 = require('fs');
-
-var Language = {
+const useRedis = true;
+const Language = {
 	'ko_KR': require("./lang/ko_KR.json"),
 	'en_US': require("./lang/en_US.json")
 };
-//볕뉘 수정
-var ROUTES = [
+const ROUTES = [
 	"major", "consume", "admin", "login"
 ];
-//볕뉘 수정 끝
-var page = WebInit.page;
-var gameServers = [];
-
-WebInit.MOBILE_AVAILABLE = [
+const MOBILE_AVAILABLE = [
 	"portal", "main", "kkutu"
 ];
 
-require("kkutu-common/checkpub");
+const Server = Express();
 
 JLog.info("<< KKuTu Web >>");
-Server.set('views', __dirname + "/views");
-Server.set('view engine', "pug");
-Server.use(Express.static(__dirname + "/public"));
-Server.use(Parser.urlencoded({ extended: true }));
-Server.use(Exession({
-	/* use only for redis-installed
+expressInit(Server, useRedis);
 
-	store: new Redission({
-		client: Redis.createClient(),
-		ttl: 3600 * 12
-	}),*/
-	secret: 'kkutu',
-	resave: false,
-	saveUninitialized: true
-}));
-//볕뉘 수정
-Server.use(passport.initialize());
-Server.use(passport.session());
-Server.use((req, res, next) => {
-	if(req.session.passport) {
-		delete req.session.passport;
+function updateLanguage(){
+	for(const languageCode in Language){
+		const src = `./lang/${languageCode}.json`;
+
+		delete require.cache[require.resolve(src)];
+		Language[languageCode] = require(src);
 	}
-	next();
-});
-Server.use((req, res, next) => {
-	if(Const.IS_SECURED) {
-		if(req.protocol == 'http') {
-			let url = 'https://'+req.get('host')+req.path;
-			res.status(302).redirect(url);
-		} else {
-			next();
+}
+
+function getLanguage(locale, page, shop){
+	const L = Language[locale] || {};
+	const R = {};
+
+	for(const key in L.GLOBAL) R[key] = L.GLOBAL[key];
+	if(shop) for(const key in L.SHOP) R[key] = L.SHOP[key];
+	for(const key in L[page]) R[key] = L[page][key];
+	if(R['title']) R['title'] = `[${process.env['KKT_SV_NAME']}] ${R['title']}`;
+
+	return R;
+}
+
+function page(req, res, file, data = {}){
+	if(req.session.createdAt){
+		if(new Date() - req.session.createdAt > 60 * 60 * 1000){
+			delete req.session.profile;
 		}
-	} else {
-		next();
+	}else{
+		req.session.createdAt = new Date();
 	}
+
+	data.published = global.isPublic;
+	// URL ...?locale=en_US will show the page in English
+	data.lang = req.query.locale || "ko_KR";
+	if(!Language[data.lang]) data.lang = "ko_KR";
+	data.locale = getLanguage(data.lang, data._page || file.split('_')[0], data._shop);
+	data.session = req.session;
+	if((/mobile/i).test(req.get('user-agent')) || req.query.mob){
+		data.mobile = true;
+		if(req.query.pc){
+			data.as_pc = true;
+			data.page = file;
+		}else if(MOBILE_AVAILABLE && MOBILE_AVAILABLE.includes(file)){
+			data.page = 'm_' + file;
+		}else{
+			data.mobile = false;
+			data.page = file;
+		}
+	}else{
+		data.page = file;
+	}
+
+	const addr = req.ip || "";
+	const sid = req.session.id || "";
+	JLog.log(`${addr.slice(7)}@${sid.slice(0, 10)} ${data.page}, ${JSON.stringify(req.params)}`);
+	res.render(data.page, data, (err, html) => {
+		if(err) res.send(err.toString());
+		else res.send(html);
+	});
+}
+
+Server.get("/language/:page/:lang", function(req, res){
+	let page = req.params.page.replaceAll("_", "/");
+	const lang = req.params.lang;
+
+	if(page.startsWith("m/")) page = page.slice(2);
+	if(page === "portal") page = "kkutu";
+	res.send("window.L = "+JSON.stringify(getLanguage(lang, page, true))+";");
 });
-//볕뉘 수정 끝
-/* use this if you want
-
-DDDoS = new DDDoS({
-	maxWeight: 6,
-	checkInterval: 10000,
-	rules: [{
-		regexp: "^/(cf|dict|gwalli)",
-		maxWeight: 20,
-		errorData: "429 Too Many Requests"
-	}, {
-		regexp: ".*",
-		errorData: "429 Too Many Requests"
-	}]
+Server.get("/language/flush", function(req, res){
+	updateLanguage();
+	res.sendStatus(200);
 });
-DDDoS.rules[0].logFunction = DDDoS.rules[1].logFunction = function(ip, path){
-	JLog.warn(`DoS from IP ${ip} on ${path}`);
-};
-Server.use(DDDoS.express());*/
 
-WebInit.init(Server, true);
-DB.ready = function(){
+DB.ready = () => {
 	setInterval(function(){
-		var q = [ 'createdAt', { $lte: Date.now() - 3600000 * 12 } ];
+		DB.session.remove([ 'createdAt', { $lte: Date.now() - 12 * 60 * 60 * 1000 } ]).on();
+	}, 10 * 60 * 1000);
 
-		DB.session.remove(q).on();
-	}, 600000);
 	setInterval(function(){
-		gameServers.forEach(function(v){
-			if(v.socket) v.socket.send(`{"type":"seek"}`);
-			else v.seek = undefined;
-		});
-	}, 4000);
+		gameClientManager.seek();
+	}, 4 * 1000);
+
 	JLog.success("DB is ready.");
 
-	DB.kkutu_shop_desc.find().on(function($docs){
-		var i, j;
+	DB.kkutu_shop_desc.find().on(($docs) => {
+		for(const languageCode in Language) {
+			Language[languageCode].SHOP = {};
 
-		for(i in Language) flush(i);
-		function flush(lang){
-			var db;
-
-			Language[lang].SHOP = db = {};
-			for(j in $docs){
-				db[$docs[j]._id] = [ $docs[j][`name_${lang}`], $docs[j][`desc_${lang}`] ];
+			for(const j in $docs){
+				Language[languageCode].SHOP[$docs[j]._id] = [ $docs[j][`name_${languageCode}`], $docs[j][`desc_${languageCode}`] ];
 			}
 		}
 	});
@@ -151,84 +142,32 @@ DB.ready = function(){
 		https.createServer(options, Server).listen(443);
 	}
 };
-Const.MAIN_PORTS.forEach(function(v, i){
-	var KEY = process.env['WS_KEY'];
-	var protocol;
-	if(Const.IS_SECURED) {
-		protocol = 'wss';
-	} else {
-		protocol = 'ws';
-	}
-	gameServers[i] = new GameClient(KEY, `${protocol}://${GLOBAL.GAME_SERVER_HOST}:${v}/${KEY}`);
+
+ROUTES.forEach((route) => {
+	require(`./routes/${route}`).run(Server, page);
 });
-function GameClient(id, url){
-	var my = this;
 
-	my.id = id;
-	my.socket = new WS(url, { perMessageDeflate: false, rejectUnauthorized: false});
-	
-	my.send = function(type, data){
-		if(!data) data = {};
-		data.type = type;
-
-		my.socket.send(JSON.stringify(data));
-	};
-	my.socket.on('open', function(){
-		JLog.info(`Game server #${my.id} connected`);
-	});
-	my.socket.on('error', function(err){
-		JLog.warn(`Game server #${my.id} has an error: ${err.toString()}`);
-	});
-	my.socket.on('close', function(code){
-		JLog.error(`Game server #${my.id} closed: ${code}`);
-		my.socket.removeAllListeners();
-		delete my.socket;
-	});
-	my.socket.on('message', function(data){
-		var _data = data;
-		var i;
-
-		data = JSON.parse(data);
-
-		switch(data.type){
-			case "seek":
-				my.seek = data.value;
-				break;
-			case "narrate-friend":
-				for(i in data.list){
-					gameServers[i].send('narrate-friend', { id: data.id, s: data.s, stat: data.stat, list: data.list[i] });
-				}
-				break;
-			default:
-		}
-	});
-}
-ROUTES.forEach(function(v){
-	require(`./routes/${v}`).run(Server, WebInit.page);
-});
-Server.get("/", function(req, res){
-	var server = req.query.server;
-	
-	//볕뉘 수정 구문삭제(220~229, 240)
+Server.get("/", (req, res) => {
 	DB.session.findOne([ '_id', req.session.id ]).on(function($ses){
-		// var sid = (($ses || {}).profile || {}).sid || "NULL";
 		if(global.isPublic){
 			onFinish($ses);
-			// DB.jjo_session.findOne([ '_id', sid ]).limit([ 'profile', true ]).on(onFinish);
 		}else{
 			if($ses) $ses.profile.sid = $ses._id;
 			onFinish($ses);
 		}
 	});
-	function onFinish($doc){
-		var id = req.session.id;
 
+	function onFinish($doc){
+		let id = req.session.id;
 		if($doc){
 			req.session.profile = $doc.profile;
 			id = $doc.profile.sid;
 		}else{
 			delete req.session.profile;
 		}
+
+		const server = req.query.server;
+
 		page(req, res, Const.MAIN_PORTS[server] ? "kkutu" : "portal", {
 			'_page': "kkutu",
 			'_id': id,
@@ -257,15 +196,9 @@ Server.get("/", function(req, res){
 });
 
 Server.get("/servers", function(req, res){
-	var list = [];
-
-	gameServers.forEach(function(v, i){
-		list[i] = v.seek;
-	});
+	const list = gameClientManager.getList();
 	res.send({ list: list, max: Const.KKUTU_MAX });
 });
-
-//볕뉘 수정 구문 삭제(274~353)
 
 Server.get("/legal/:page", function(req, res){
 	page(req, res, "legal/"+req.params.page);
