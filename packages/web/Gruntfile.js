@@ -21,13 +21,11 @@ const File = require('fs');
 const KKUTU = "src/public/js/in_game_kkutu.min.js";
 const LIST = [
 	"global",
-	
-	"in_login",
+
 	"in_game_kkutu",
 	"in_game_kkutu_help",
 	"in_admin",
-	"in_portal",
-	"in_loginfail"
+	"in_portal"
 ];
 const KKUTU_LIST = [
 	"src/lib/kkutu/head.js",
