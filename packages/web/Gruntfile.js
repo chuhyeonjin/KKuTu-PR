@@ -16,8 +16,9 @@ const LICENSE = [
 	"along with this program. If not, see <http://www.gnu.org/licenses/>."
 ].join('\n');
 
-var File = require('fs');
+const File = require('fs');
 
+const KKUTU = "src/public/js/in_game_kkutu.min.js";
 const LIST = [
 	"global",
 	
@@ -43,11 +44,10 @@ const KKUTU_LIST = [
 ];
 
 module.exports = function(grunt){
-	var i, files = {}, cons = {};
-	var KKUTU = "src/public/js/in_game_kkutu.min.js";
+	const files = {};
 	
-	for(i in LIST){
-		files["src/public/js/"+LIST[i]+".min.js"] = "src/lib/"+LIST[i]+".js";
+	for(const fileName of LIST){
+		files[`src/public/js/${fileName}.min.js`] = `src/lib/${fileName}.js`;
 	}
 	files[KKUTU] = KKUTU_LIST;
 	
@@ -72,13 +72,10 @@ module.exports = function(grunt){
 	
 	grunt.registerTask('default', ['concat', 'uglify']);
 	grunt.registerTask('pack', 'Log', function(){
-		var done = this.async();
-		var url = __dirname + "/" + KKUTU;
-		
-		File.readFile(url, function(err, res){
-			File.writeFile(url, "(function(){" + res.toString() + "})();", function(err, res){
-				done();
-			});
-		})
+		const url = __dirname + "/" + KKUTU;
+
+		const fileData = File.readFileSync(url, {encoding: 'utf-8'});
+		File.writeFileSync(url, "(function(){" + fileData + "})();");
+		this.async();
 	});
 };
