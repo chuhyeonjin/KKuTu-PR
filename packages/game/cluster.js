@@ -16,42 +16,38 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var Cluster = require("cluster");
-var Const = require('kkutu-common/const');
-var JLog = require('kkutu-common/jjlog');
-var SID = Number(process.argv[2]);
-var CPU = Number(process.argv[3]); //require("os").cpus().length;
+const Cluster = require("cluster");
+const Const = require('kkutu-common/const');
+const JLog = require('kkutu-common/jjlog');
 
-if(isNaN(SID)){
-	if(process.argv[2] == "test"){
-		global.test = true;
-		CPU = 1;
-	}else{
-		console.log(`Invalid Server ID ${process.argv[2]}`);
-		process.exit(1);
-	}
+const sidArg = process.argv[2];
+const cpuArg = process.argv[3];
+
+if (sidArg === "test") {
+	global.test = true;
+} else if (isNaN(sidArg)) {
+	console.log(`Invalid Server ID ${process.argv[2]}`);
+	process.exit(1);
 }
-if(isNaN(CPU)){
+
+if (isNaN(cpuArg)) {
 	console.log(`Invalid CPU Number ${process.argv[3]}`);
 	process.exit(1);
 }
+
+const SID = Number(sidArg);
+const CPU = global.test ? 1 : Number(cpuArg);
+
 if(Cluster.isMaster){
-	var channels = {}, chan;
-	var i;
-	
-	for(i=0; i<CPU; i++){
-		chan = i + 1;
-		channels[chan] = Cluster.fork({ SERVER_NO_FORK: true, KKUTU_PORT: Const.MAIN_PORTS[SID] + 416 + i, CHANNEL: chan });
-	}
+	const channels =
+		new Array(CPU).fill()
+			.map((_, i) => Cluster.fork({ SERVER_NO_FORK: true, KKUTU_PORT: Const.MAIN_PORTS[SID] + 416 + i, CHANNEL: i + 1}))
+			.reduce((a, v, i) => ({...a, [i + 1] : v}), {});
+
 	Cluster.on('exit', function(w){
-		for(i in channels){
-			if(channels[i] == w){
-				chan = Number(i);
-				break;
-			}
-		}
-		JLog.error(`Worker @${chan} ${w.process.pid} died`);
-		channels[chan] = Cluster.fork({ SERVER_NO_FORK: true, KKUTU_PORT: Const.MAIN_PORTS[SID] + 416 + (chan - 1), CHANNEL: chan });
+		const channelNumber = Object.values(channels).indexOf(w) + 1;
+		JLog.error(`Worker @${channelNumber} ${w.process.pid} died`);
+		channels[channelNumber] = Cluster.fork({ SERVER_NO_FORK: true, KKUTU_PORT: Const.MAIN_PORTS[SID] + 416 + (channelNumber - 1), CHANNEL: channelNumber });
 	});
 	process.env['KKUTU_PORT'] = Const.MAIN_PORTS[SID];
 	require("./master.js").init(SID.toString(), channels);
