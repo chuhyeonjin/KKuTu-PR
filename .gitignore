@@ -4,6 +4,7 @@ packages/web/src/public/js/**
 !packages/web/src/public/js/jquery.js
 config/auth.json
 config/global.json
+KKUTU_ERROR.log
 .vscode/
 .idea/
 coverage/
