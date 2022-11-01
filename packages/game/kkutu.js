@@ -39,8 +39,6 @@ const PER_OKG = 600000;
 
 exports.NIGHT = false;
 exports.init = function(_DB, _DIC, _ROOM, _GUEST_PERMISSION, _CHAN){
-	var i, k;
-	
 	DB = _DB;
 	DIC = _DIC;
 	ROOM = _ROOM;
@@ -55,11 +53,12 @@ exports.init = function(_DB, _DIC, _ROOM, _GUEST_PERMISSION, _CHAN){
 			SHOP[item._id] = item;
 		});
 	});
+
 	Rule = {};
-	for(i in Const.RULE){
-		k = Const.RULE[i].rule;
-		Rule[k] = require(`./games/${k.toLowerCase()}`);
-		Rule[k].init(DB, DIC);
+	for(const i in Const.RULE){
+		const k = Const.RULE[i].rule;
+		const gameMode = require(`./games/${k.toLowerCase()}`);
+		Rule[k] = new gameMode(DB, DIC);
 	}
 };
 /* 망할 셧다운제
