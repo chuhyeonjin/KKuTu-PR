@@ -16,31 +16,28 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var Const = require('kkutu-common/const');
 var TYL = require('./typing_const');
 var Lizard = require('kkutu-common/lizard');
-var DB;
-var DIC;
 
 var LIST_LENGTH = 200;
 var DOUBLE_VOWELS = [ 9, 10, 11, 14, 15, 16, 19 ];
 var DOUBLE_TAILS = [ 3, 5, 6, 9, 10, 11, 12, 13, 14, 15, 18 ];
 
-function traverse(func){
-	var my = this;
-	var i, o;
-	
-	for(i in my.game.seq){
-		if(!(o = DIC[my.game.seq[i]])) continue;
-		if(!o.game) continue;
-		func(o);
-	}
-}
-
 module.exports = class {
-	constructor(_DB, _DIC) {
-		DB = _DB;
-		DIC = _DIC;
+	constructor(_DB, _DIC, _ROOM) {
+		this.DB = _DB;
+		this.DIC = _DIC;
+		this.ROOM = _ROOM;
+	}
+
+	traverse(func) {
+		var i, o;
+
+		for(i in this.ROOM.game.seq){
+			if(!(o = this.DIC[this.ROOM.game.seq[i]])) continue;
+			if(!o.game) continue;
+			func(o);
+		}
 	}
 
 	getTitle() {
@@ -48,8 +45,8 @@ module.exports = class {
 		var my = this;
 		var i, j;
 
-		if(my.opts.proverb) pick(TYL.PROVERBS[my.rule.lang]);
-		else DB.kkutu[my.rule.lang].find([ '_id', /^.{2,5}$/ ], [ 'hit', { $gte: 1 } ]).limit(416).on(function($res){
+		if(this.ROOM.opts.proverb) pick(TYL.PROVERBS[this.ROOM.rule.lang]);
+		else this.DB.kkutu[this.ROOM.rule.lang].find([ '_id', /^.{2,5}$/ ], [ 'hit', { $gte: 1 } ]).limit(416).on(function($res){
 			pick($res.map(function(item){ return item._id; }));
 		});
 		function pick(list){
@@ -57,84 +54,79 @@ module.exports = class {
 			var len = list.length;
 			var arr;
 
-			for(i=0; i<my.round; i++){
+			for(i=0; i<my.ROOM.round; i++){
 				arr = [];
 				for(j=0; j<LIST_LENGTH; j++){
 					arr.push(list[Math.floor(Math.random() * len)]);
 				}
 				data.push(arr);
 			}
-			my.game.lists = data;
+			my.ROOM.game.lists = data;
 			R.go("①②③④⑤⑥⑦⑧⑨⑩");
 		}
-		traverse.call(my, function(o){
+		this.traverse((o) => {
 			o.game.spl = 0;
 		});
 		return R;
 	}
 
 	roundReady() {
-		var my = this;
 		var scores = {};
 
-		if(!my.game.lists) return;
+		if(!this.ROOM.game.lists) return;
 
-		my.game.round++;
-		my.game.roundTime = my.time * 1000;
-		if(my.game.round <= my.round){
-			my.game.clist = my.game.lists.shift();
-			my.byMaster('roundReady', {
-				round: my.game.round,
-				list: my.game.clist
+		this.ROOM.game.round++;
+		this.ROOM.game.roundTime = this.ROOM.time * 1000;
+		if(this.ROOM.game.round <= this.ROOM.round){
+			this.ROOM.game.clist = this.ROOM.game.lists.shift();
+			this.ROOM.byMaster('roundReady', {
+				round: this.ROOM.game.round,
+				list: this.ROOM.game.clist
 			}, true);
-			setTimeout(my.turnStart, 2400);
+			setTimeout(this.ROOM.turnStart, 2400);
 		}else{
-			traverse.call(my, function(o){
-				scores[o.id] = Math.round(o.game.spl / my.round);
+			this.traverse((o) => {
+				scores[o.id] = Math.round(o.game.spl / this.ROOM.round);
 			});
-			my.roundEnd({ scores: scores });
+			this.ROOM.roundEnd({ scores: scores });
 		}
 	}
 
 	turnStart() {
-		var my = this;
-
-		my.game.late = false;
-		traverse.call(my, function(o){
+		this.ROOM.game.late = false;
+		this.traverse((o) => {
 			o.game.miss = 0;
 			o.game.index = 0;
 			o.game.semi = 0;
 		});
-		my.game.qTimer = setTimeout(my.turnEnd, my.game.roundTime);
-		my.byMaster('turnStart', { roundTime: my.game.roundTime }, true);
+		this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, this.ROOM.game.roundTime);
+		this.ROOM.byMaster('turnStart', { roundTime: this.ROOM.game.roundTime }, true);
 	}
 
 	turnEnd() {
-		var my = this;
 		var spl = {};
 		var sv;
 
-		my.game.late = true;
-		traverse.call(my, function(o){
-			sv = (o.game.semi + o.game.index - o.game.miss) / my.time * 60;
+		this.ROOM.game.late = true;
+		this.traverse((o) => {
+			sv = (o.game.semi + o.game.index - o.game.miss) / this.ROOM.time * 60;
 			spl[o.id] = Math.round(sv);
 			o.game.spl += sv;
 		});
-		my.byMaster('turnEnd', {
+		this.ROOM.byMaster('turnEnd', {
 			ok: false,
 			speed: spl
 		});
-		my.game._rrt = setTimeout(my.roundReady, (my.game.round == my.round) ? 3000 : 10000);
+		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, (this.ROOM.game.round == this.ROOM.round) ? 3000 : 10000);
 	}
 
 	submit(client, text) {
-		var my = this;
 		var score;
 
 		if(!client.game) return;
 
-		if(my.game.clist[client.game.index] == text){
-			score = my.getScore(text);
+		if(this.ROOM.game.clist[client.game.index] == text){
+			score = this.ROOM.getScore(text);
 
 			client.game.semi += score;
 			client.game.score += score;
@@ -149,15 +141,14 @@ module.exports = class {
 			client.game.miss++;
 			client.send('turnEnd', { error: true });
 		}
-		if(!my.game.clist[++client.game.index]) client.game.index = 0;
+		if(!this.ROOM.game.clist[++client.game.index]) client.game.index = 0;
 	}
 
 	getScore(text) {
-		var my = this;
 		var i, len = text.length;
 		var r = 0, s, t;
 
-		switch(my.rule.lang){
+		switch(this.ROOM.rule.lang){
 			case 'ko':
 				for(i=0; i<len; i++){
 					s = text.charCodeAt(i);

@@ -18,8 +18,6 @@
 
 var Const = require('kkutu-common/const');
 var Lizard = require('kkutu-common/lizard');
-var DB;
-var DIC;
 
 const ROBOT_START_DELAY = [ 1200, 800, 400, 200, 0 ];
 const ROBOT_TYPE_COEF = [ 1250, 750, 500, 250, 0 ];
@@ -27,15 +25,14 @@ const ROBOT_THINK_COEF = [ 4, 2, 1, 0, 0 ];
 const ROBOT_HIT_LIMIT = [ 4, 2, 1, 0, 0 ];
 
 module.exports = class {
-	constructor(_DB, _DIC) {
-		DB = _DB;
-		DIC = _DIC;
+	constructor(_DB, _DIC, _ROOM) {
+		this.DB = _DB;
+		this.DIC = _DIC;
+		this.ROOM = _ROOM;
 	}
 
 	getTitle() {
 		var R = new Lizard.Tail();
-		var my = this;
-
 		setTimeout(function(){
 			R.go("①②③④⑤⑥⑦⑧⑨⑩");
 		}, 500);
@@ -43,106 +40,103 @@ module.exports = class {
 	}
 
 	roundReady() {
-		var my = this;
-		var ijl = my.opts.injpick.length;
+		var ijl = this.ROOM.opts.injpick.length;
 
-		clearTimeout(my.game.turnTimer);
-		my.game.round++;
-		my.game.roundTime = my.time * 1000;
-		if(my.game.round <= my.round){
-			my.game.theme = my.opts.injpick[Math.floor(Math.random() * ijl)];
-			my.game.chain = [];
-			if(my.opts.mission) my.game.mission = getMission(my.rule.lang);
-			my.byMaster('roundReady', {
-				round: my.game.round,
-				theme: my.game.theme,
-				mission: my.game.mission
+		clearTimeout(this.ROOM.game.turnTimer);
+		this.ROOM.game.round++;
+		this.ROOM.game.roundTime = this.ROOM.time * 1000;
+		if(this.ROOM.game.round <= this.ROOM.round){
+			this.ROOM.game.theme = this.ROOM.opts.injpick[Math.floor(Math.random() * ijl)];
+			this.ROOM.game.chain = [];
+			if(this.ROOM.opts.mission) this.ROOM.game.mission = getMission(this.ROOM.rule.lang);
+			this.ROOM.byMaster('roundReady', {
+				round: this.ROOM.game.round,
+				theme: this.ROOM.game.theme,
+				mission: this.ROOM.game.mission
 			}, true);
-			my.game.turnTimer = setTimeout(my.turnStart, 2400);
+			this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnStart, 2400);
 		}else{
-			my.roundEnd();
+			this.ROOM.roundEnd();
 		}
 	}
 
 	turnStart(force) {
-		var my = this;
 		var speed;
 		var si;
 
-		if(!my.game.chain) return;
-		my.game.roundTime = Math.min(my.game.roundTime, Math.max(10000, 150000 - my.game.chain.length * 1500));
-		speed = my.getTurnSpeed(my.game.roundTime);
-		clearTimeout(my.game.turnTimer);
-		clearTimeout(my.game.robotTimer);
-		my.game.late = false;
-		my.game.turnTime = 15000 - 1400 * speed;
-		my.game.turnAt = (new Date()).getTime();
-		my.byMaster('turnStart', {
-			turn: my.game.turn,
+		if(!this.ROOM.game.chain) return;
+		this.ROOM.game.roundTime = Math.min(this.ROOM.game.roundTime, Math.max(10000, 150000 - this.ROOM.game.chain.length * 1500));
+		speed = this.ROOM.getTurnSpeed(this.ROOM.game.roundTime);
+		clearTimeout(this.ROOM.game.turnTimer);
+		clearTimeout(this.ROOM.game.robotTimer);
+		this.ROOM.game.late = false;
+		this.ROOM.game.turnTime = 15000 - 1400 * speed;
+		this.ROOM.game.turnAt = (new Date()).getTime();
+		this.ROOM.byMaster('turnStart', {
+			turn: this.ROOM.game.turn,
 			speed: speed,
-			roundTime: my.game.roundTime,
-			turnTime: my.game.turnTime,
-			mission: my.game.mission,
-			seq: force ? my.game.seq : undefined
+			roundTime: this.ROOM.game.roundTime,
+			turnTime: this.ROOM.game.turnTime,
+			mission: this.ROOM.game.mission,
+			seq: force ? this.ROOM.game.seq : undefined
 		}, true);
-		my.game.turnTimer = setTimeout(my.turnEnd, Math.min(my.game.roundTime, my.game.turnTime + 100));
-		if(si = my.game.seq[my.game.turn]) if(si.robot){
-			my.readyRobot(si);
+		this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnEnd, Math.min(this.ROOM.game.roundTime, this.ROOM.game.turnTime + 100));
+		if(si = this.ROOM.game.seq[this.ROOM.game.turn]) if(si.robot){
+			this.ROOM.readyRobot(si);
 		}
 	}
 
 	turnEnd() {
-		var my = this;
-		var target = DIC[my.game.seq[my.game.turn]] || my.game.seq[my.game.turn];
+		var target = this.DIC[this.ROOM.game.seq[this.ROOM.game.turn]] || this.ROOM.game.seq[this.ROOM.game.turn];
 		var score;
 
-		if(my.game.loading){
-			my.game.turnTimer = setTimeout(my.turnEnd, 100);
+		if(this.ROOM.game.loading){
+			this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnEnd, 100);
 			return;
 		}
-		if(!my.game.chain) return;
+		if(!this.ROOM.game.chain) return;
 
-		my.game.late = true;
+		this.ROOM.game.late = true;
 		if(target) if(target.game){
-			score = Const.getPenalty(my.game.chain, target.game.score);
+			score = Const.getPenalty(this.ROOM.game.chain, target.game.score);
 			target.game.score += score;
 		}
-		getAuto.call(my, my.game.theme, 0).then(function(w){
-			my.byMaster('turnEnd', {
+		getAuto.call(this, this.ROOM.game.theme, 0).then((w) => {
+			this.ROOM.byMaster('turnEnd', {
 				ok: false,
 				target: target ? target.id : null,
 				score: score,
 				hint: w
 			}, true);
-			my.game._rrt = setTimeout(my.roundReady, 3000);
+			this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, 3000);
 		});
-		clearTimeout(my.game.robotTimer);
+		clearTimeout(this.ROOM.game.robotTimer);
 	}
 
-	submit(client, text, data) {
+	submit(client, text) {
 		var score, l, t;
-		var my = this;
 		var tv = (new Date()).getTime();
-		var mgt = my.game.seq[my.game.turn];
+		var mgt = this.ROOM.game.seq[this.ROOM.game.turn];
 
 		if(!mgt) return;
 		if(!mgt.robot) if(mgt != client.id) return;
-		if(!my.game.theme) return;
-		if(my.game.chain.indexOf(text) == -1){
-			l = my.rule.lang;
-			my.game.loading = true;
+		if(!this.ROOM.game.theme) return;
+		if(this.ROOM.game.chain.indexOf(text) == -1){
+			l = this.ROOM.rule.lang;
+			this.ROOM.game.loading = true;
+			var my = this;
 			function onDB($doc){
 				function preApproved(){
-					if(my.game.late) return;
-					if(!my.game.chain) return;
+					if(my.ROOM.game.late) return;
+					if(!my.ROOM.game.chain) return;
 
-					my.game.loading = false;
-					my.game.late = true;
-					clearTimeout(my.game.turnTimer);
-					t = tv - my.game.turnAt;
-					score = my.getScore(text, t);
-					my.game.chain.push(text);
-					my.game.roundTime -= t;
+					my.ROOM.game.loading = false;
+					my.ROOM.game.late = true;
+					clearTimeout(my.ROOM.game.turnTimer);
+					t = tv - my.ROOM.game.turnAt;
+					score = my.ROOM.getScore(text, t);
+					my.ROOM.game.chain.push(text);
+					my.ROOM.game.roundTime -= t;
 					client.game.score += score;
 					client.publish('turnEnd', {
 						ok: true,
@@ -151,55 +145,53 @@ module.exports = class {
 						theme: $doc.theme,
 						wc: $doc.type,
 						score: score,
-						bonus: (my.game.mission === true) ? score - my.getScore(text, t, true) : 0,
+						bonus: (my.ROOM.game.mission === true) ? score - my.ROOM.getScore(text, t, true) : 0,
 						baby: $doc.baby
 					}, true);
-					if(my.game.mission === true){
-						my.game.mission = getMission(my.rule.lang);
+					if(my.ROOM.game.mission === true){
+						my.ROOM.game.mission = getMission(my.ROOM.rule.lang);
 					}
-					setTimeout(my.turnNext, my.game.turnTime / 6);
+					setTimeout(my.ROOM.turnNext, my.ROOM.game.turnTime / 6);
 					if(!client.robot){
 						client.invokeWordPiece(text, 1);
-						DB.kkutu[l].update([ '_id', text ]).set([ 'hit', $doc.hit + 1 ]).on();
+						my.DB.kkutu[l].update([ '_id', text ]).set([ 'hit', $doc.hit + 1 ]).on();
 					}
 				}
 				function denied(code){
-					my.game.loading = false;
+					my.ROOM.game.loading = false;
 					client.publish('turnError', { code: code || 404, value: text }, true);
 				}
 				if($doc){
-					if($doc.theme.match(toRegex(my.game.theme)) == null) denied(407);
+					if($doc.theme.match(toRegex(my.ROOM.game.theme)) == null) denied(407);
 					else preApproved();
 				}else{
 					denied();
 				}
 			}
-			DB.kkutu[l].findOne([ '_id', text ]).on(onDB);
+			this.DB.kkutu[l].findOne([ '_id', text ]).on(onDB);
 		}else{
 			client.publish('turnError', { code: 409, value: text }, true);
 		}
 	}
 
 	getScore(text,delay, ignoreMission) {
-		var my = this;
-		var tr = 1 - delay / my.game.turnTime;
-		var score = Const.getPreScore(text, my.game.chain, tr);
+		var tr = 1 - delay / this.ROOM.game.turnTime;
+		var score = Const.getPreScore(text, this.ROOM.game.chain, tr);
 		var arr;
 
-		if(!ignoreMission) if(arr = text.match(new RegExp(my.game.mission, "g"))){
+		if(!ignoreMission) if(arr = text.match(new RegExp(this.ROOM.game.mission, "g"))){
 			score += score * 0.5 * arr.length;
-			my.game.mission = true;
+			this.ROOM.game.mission = true;
 		}
 		return Math.round(score);
 	}
 
 	readyRobot(robot) {
-		var my = this;
 		var level = robot.level;
 		var delay = ROBOT_START_DELAY[level];
 		var w, text;
 
-		getAuto.call(my, my.game.theme, 2).then(function(list){
+		getAuto.call(this, this.ROOM.game.theme, 2).then(function(list){
 			if(list.length){
 				list.sort(function(a, b){ return b.hit - a.hit; });
 				if(ROBOT_HIT_LIMIT[level] > list[0].hit) denied();
@@ -220,9 +212,10 @@ module.exports = class {
 				after();
 			}else denied();
 		}
+		var my = this;
 		function after(){
 			delay += text.length * ROBOT_TYPE_COEF[level];
-			setTimeout(my.turnRobot, delay, robot, text);
+			setTimeout(my.ROOM.turnRobot, delay, robot, text);
 		}
 	}
 }
@@ -241,7 +234,6 @@ function getAuto(theme, type){
 		1 존재 여부
 		2 단어 목록
 	*/
-	var my = this;
 	var R = new Lizard.Tail();
 	var bool = type == 1;
 	
@@ -250,8 +242,8 @@ function getAuto(theme, type){
 	var raiser;
 	var lst = false;
 	
-	if(my.game.chain) aqs.push([ '_id', { '$nin': my.game.chain } ]);
-	raiser = DB.kkutu[my.rule.lang].find.apply(this, aqs).limit(bool ? 1 : 123);
+	if(this.ROOM.game.chain) aqs.push([ '_id', { '$nin': this.ROOM.game.chain } ]);
+	raiser = this.DB.kkutu[this.ROOM.rule.lang].find.apply(this, aqs).limit(bool ? 1 : 123);
 	switch(type){
 		case 0:
 		default:

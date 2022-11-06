@@ -27,7 +27,7 @@ var SHOP;
 var DIC;
 var ROOM;
 var _rid;
-var Rule;
+// var Rule;
 var guestProfiles = [];
 var CHAN;
 var channel = process.env['CHANNEL'] || 0;
@@ -54,12 +54,12 @@ exports.init = function(_DB, _DIC, _ROOM, _GUEST_PERMISSION, _CHAN){
 		});
 	});
 
-	Rule = {};
-	for(const i in Const.RULE){
-		const k = Const.RULE[i].rule;
-		const gameMode = require(`./games/${k.toLowerCase()}`);
-		Rule[k] = new gameMode(DB, DIC);
-	}
+	// Rule = {};
+	// for(const i in Const.RULE){
+	// 	const k = Const.RULE[i].rule;
+	// 	const gameMode = require(`./games/${k.toLowerCase()}`);
+	// 	Rule[k] = new gameMode(DB, DIC);
+	// }
 };
 /* 망할 셧다운제
 exports.processAjae = function(){
@@ -1016,6 +1016,13 @@ exports.Room = function(room, channel){
 		for(i in my.players){
 			if(DIC[my.players[i]]) DIC[my.players[i]].ready = false;
 		}
+
+		if(!my.rule) {
+			JLog.warn("Unknown mode: " + my.mode);
+			return;
+		}
+		const implementation = require(`./games/${my.rule.rule.toLowerCase()}`)
+		my.gameImplementation = new implementation(DB, DIC, my);
 	};
 	my.preReady = function(teams){
 		var i, j, t = 0, l = 0;
@@ -1311,7 +1318,7 @@ exports.Room = function(room, channel){
 		return my.route("submit", client, text, data);
 	};
 	my.getScore = function(text, delay, ignoreMission){
-		return my.routeSync("getScore", text, delay, ignoreMission);
+		return my.route("getScore", text, delay, ignoreMission);
 	};
 	my.getTurnSpeed = function(rt){
 		if(rt < 5000) return 10;
@@ -1329,28 +1336,15 @@ exports.Room = function(room, channel){
 	my.getTitle = function(){
 		return my.route("getTitle");
 	};
-	/*my.route = function(func, ...args){
-		var cf;
-		
-		if(!(cf = my.checkRoute(func))) return;
-		return Slave.run(my, func, args);
-	};*/
-	my.route = my.routeSync = function(func, ...args){
-		var cf;
-		
-		if(!(cf = my.checkRoute(func))) return;
-		return cf.apply(my, args);
+	my.route = function(func, ...args){
+		if(!my.gameImplementation) return JLog.warn("Unknown rule: " + my.rule.rule);
+		if(!my.gameImplementation[func]) return JLog.warn("Unknown function: " + func);
+		return my.gameImplementation[func](...args);
 	};
-	my.checkRoute = function(func){
-		var c;
-		
-		if(!my.rule) return JLog.warn("Unknown mode: " + my.mode), false;
-		if(!(c = Rule[my.rule.rule])) return JLog.warn("Unknown rule: " + my.rule.rule), false;
-		if(!c[func]) return JLog.warn("Unknown function: " + func), false;
-		return c[func];
-	};
+
 	my.set(room);
 };
+
 function getFreeChannel(){
 	var i, list = {};
 	

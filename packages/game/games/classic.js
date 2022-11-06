@@ -18,8 +18,6 @@
 
 var Const = require('kkutu-common/const');
 var Lizard = require('kkutu-common/lizard');
-var DB;
-var DIC;
 
 const ROBOT_START_DELAY = [ 1200, 800, 400, 200, 0 ];
 const ROBOT_TYPE_COEF = [ 1250, 750, 500, 250, 0 ];
@@ -31,15 +29,15 @@ const RIEUL_TO_IEUNG = [4451, 4455, 4456, 4461, 4466, 4469];
 const NIEUN_TO_IEUNG = [4455, 4461, 4466, 4469];
 
 module.exports = class {
-	constructor(_DB, _DIC) {
-		DB = _DB;
-		DIC = _DIC;
+	constructor(_DB, _DIC, _ROOM) {
+		this.DB = _DB;
+		this.DIC = _DIC;
+		this.ROOM = _ROOM;
 	}
 
 	getTitle() {
 		var R = new Lizard.Tail();
-		var my = this;
-		var l = my.rule;
+		var l = this.ROOM.rule;
 		var EXAMPLE;
 		var eng, ja;
 
@@ -52,15 +50,15 @@ module.exports = class {
 			return R;
 		}
 		EXAMPLE = Const.EXAMPLE_TITLE[l.lang];
-		my.game.dic = {};
+		this.ROOM.game.dic = {};
 
-		switch(Const.GAME_TYPE[my.mode]){
+		switch(Const.GAME_TYPE[this.ROOM.mode]){
 			case 'EKT':
 			case 'ESH':
 				eng = "^" + String.fromCharCode(97 + Math.floor(Math.random() * 26));
 				break;
 			case 'KKT':
-				my.game.wordLength = 3;
+				this.ROOM.game.wordLength = 3;
 			case 'KSH':
 				ja = 44032 + 588 * Math.floor(Math.random() * 18);
 				eng = "^[\\u" + ja.toString(16) + "-\\u" + (ja + 587).toString(16) + "]";
@@ -70,13 +68,15 @@ module.exports = class {
 				eng = "[\\u" + ja.toString(16) + "-\\u" + (ja + 587).toString(16) + "]$";
 				break;
 		}
+
+		var my = this;
 		function tryTitle(h){
 			if(h > 50){
 				R.go(EXAMPLE);
 				return;
 			}
-			DB.kkutu[l.lang].find(
-				[ '_id', new RegExp(eng + ".{" + Math.max(1, my.round - 1) + "}$") ],
+			my.DB.kkutu[l.lang].find(
+				[ '_id', new RegExp(eng + ".{" + Math.max(1, my.ROOM.round - 1) + "}$") ],
 				// [ 'hit', { '$lte': h } ],
 				(l.lang == "ko") ? [ 'type', Const.KOR_GROUP ] : [ '_id', Const.ENG_ID ]
 				// '$where', eng+"this._id.length == " + Math.max(2, my.round) + " && this.hit <= " + h
@@ -126,130 +126,130 @@ module.exports = class {
 	}
 
 	roundReady() {
-		var my = this;
-		if(!my.game.title) return;
+		if(!this.ROOM.game.title) return;
 
-		clearTimeout(my.game.turnTimer);
-		my.game.round++;
-		my.game.roundTime = my.time * 1000;
-		if(my.game.round <= my.round){
-			my.game.char = my.game.title[my.game.round - 1];
-			my.game.subChar = getSubChar.call(my, my.game.char);
-			my.game.chain = [];
-			if(my.opts.mission) my.game.mission = getMission(my.rule.lang);
-			if(my.opts.sami) my.game.wordLength = 2;
+		clearTimeout(this.ROOM.game.turnTimer);
+		this.ROOM.game.round++;
+		this.ROOM.game.roundTime = this.ROOM.time * 1000;
+		if(this.ROOM.game.round <= this.ROOM.round){
+			this.ROOM.game.char = this.ROOM.game.title[this.ROOM.game.round - 1];
+			this.ROOM.game.subChar = getSubChar.call(this, this.ROOM.game.char);
+			this.ROOM.game.chain = [];
+			if(this.ROOM.opts.mission) this.ROOM.game.mission = getMission(this.ROOM.rule.lang);
+			if(this.ROOM.opts.sami) this.ROOM.game.wordLength = 2;
 
-			my.byMaster('roundReady', {
-				round: my.game.round,
-				char: my.game.char,
-				subChar: my.game.subChar,
-				mission: my.game.mission
+			this.ROOM.byMaster('roundReady', {
+				round: this.ROOM.game.round,
+				char: this.ROOM.game.char,
+				subChar: this.ROOM.game.subChar,
+				mission: this.ROOM.game.mission
 			}, true);
-			my.game.turnTimer = setTimeout(my.turnStart, 2400);
+			this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnStart, 2400);
 		}else{
-			my.roundEnd();
+			this.ROOM.roundEnd();
 		}
 	}
 
 	turnStart(force) {
-		var my = this;
 		var speed;
 		var si;
 
-		if(!my.game.chain) return;
-		my.game.roundTime = Math.min(my.game.roundTime, Math.max(10000, 150000 - my.game.chain.length * 1500));
-		speed = my.getTurnSpeed(my.game.roundTime);
-		clearTimeout(my.game.turnTimer);
-		clearTimeout(my.game.robotTimer);
-		my.game.late = false;
-		my.game.turnTime = 15000 - 1400 * speed;
-		my.game.turnAt = (new Date()).getTime();
-		if(my.opts.sami) my.game.wordLength = (my.game.wordLength == 3) ? 2 : 3;
+		if(!this.ROOM.game.chain) return;
+		this.ROOM.game.roundTime = Math.min(this.ROOM.game.roundTime, Math.max(10000, 150000 - this.ROOM.game.chain.length * 1500));
+		speed = this.ROOM.getTurnSpeed(this.ROOM.game.roundTime);
+		clearTimeout(this.ROOM.game.turnTimer);
+		clearTimeout(this.ROOM.game.robotTimer);
+		this.ROOM.game.late = false;
+		this.ROOM.game.turnTime = 15000 - 1400 * speed;
+		this.ROOM.game.turnAt = (new Date()).getTime();
+		if(this.ROOM.opts.sami) this.ROOM.game.wordLength = (this.ROOM.game.wordLength == 3) ? 2 : 3;
 
-		my.byMaster('turnStart', {
-			turn: my.game.turn,
-			char: my.game.char,
-			subChar: my.game.subChar,
+		this.ROOM.byMaster('turnStart', {
+			turn: this.ROOM.game.turn,
+			char: this.ROOM.game.char,
+			subChar: this.ROOM.game.subChar,
 			speed: speed,
-			roundTime: my.game.roundTime,
-			turnTime: my.game.turnTime,
-			mission: my.game.mission,
-			wordLength: my.game.wordLength,
-			seq: force ? my.game.seq : undefined
+			roundTime: this.ROOM.game.roundTime,
+			turnTime: this.ROOM.game.turnTime,
+			mission: this.ROOM.game.mission,
+			wordLength: this.ROOM.game.wordLength,
+			seq: force ? this.ROOM.game.seq : undefined
 		}, true);
-		my.game.turnTimer = setTimeout(my.turnEnd, Math.min(my.game.roundTime, my.game.turnTime + 100));
-		if(si = my.game.seq[my.game.turn]) if(si.robot){
+		this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnEnd, Math.min(this.ROOM.game.roundTime, this.ROOM.game.turnTime + 100));
+		if(si = this.ROOM.game.seq[this.ROOM.game.turn]) if(si.robot){
 			si._done = [];
-			my.readyRobot(si);
+			this.ROOM.readyRobot(si);
 		}
 	}
 
 	turnEnd() {
-		var my = this;
 		var target;
 		var score;
 
-		if(!my.game.seq) return;
-		target = DIC[my.game.seq[my.game.turn]] || my.game.seq[my.game.turn];
+		if(!this.ROOM.game.seq) return;
+		target = this.DIC[this.ROOM.game.seq[this.ROOM.game.turn]] || this.ROOM.game.seq[this.ROOM.game.turn];
 
-		if(my.game.loading){
-			my.game.turnTimer = setTimeout(my.turnEnd, 100);
+		if(this.ROOM.game.loading){
+			this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnEnd, 100);
 			return;
 		}
-		my.game.late = true;
+		this.ROOM.game.late = true;
 		if(target) if(target.game){
-			score = Const.getPenalty(my.game.chain, target.game.score);
+			score = Const.getPenalty(this.ROOM.game.chain, target.game.score);
 			target.game.score += score;
 		}
-		getAuto.call(my, my.game.char, my.game.subChar, 0).then(function(w){
-			my.byMaster('turnEnd', {
+
+		var my = this;
+		getAuto.call(this, this.ROOM.game.char, this.ROOM.game.subChar, 0).then(function(w){
+			my.ROOM.byMaster('turnEnd', {
 				ok: false,
 				target: target ? target.id : null,
 				score: score,
 				hint: w
 			}, true);
-			my.game._rrt = setTimeout(my.roundReady, 3000);
+			my.ROOM.game._rrt = setTimeout(my.ROOM.roundReady, 3000);
 		});
-		clearTimeout(my.game.robotTimer);
+		clearTimeout(this.ROOM.game.robotTimer);
 	}
 
 	submit(client, text) {
 		var score, l, t;
-		var my = this;
 		var tv = (new Date()).getTime();
-		var mgt = my.game.seq[my.game.turn];
+		var mgt = this.ROOM.game.seq[this.ROOM.game.turn];
 
 		if(!mgt) return;
 		if(!mgt.robot) if(mgt != client.id) return;
-		if(!my.game.char) return;
+		if(!this.ROOM.game.char) return;
 
-		if(!isChainable(text, my.mode, my.game.char, my.game.subChar)) return client.chat(text);
-		if(my.game.chain.indexOf(text) != -1) return client.publish('turnError', { code: 409, value: text }, true);
+		const my = this;
+		if(!isChainable(text, this.ROOM.mode, this.ROOM.game.char, this.ROOM.game.subChar)) return client.chat(text);
+		if(this.ROOM.game.chain.indexOf(text) != -1) return client.publish('turnError', { code: 409, value: text }, true);
 
-		l = my.rule.lang;
-		my.game.loading = true;
+		l = this.ROOM.rule.lang;
+		this.ROOM.game.loading = true;
+
 		function onDB($doc){
-			if(!my.game.chain) return;
+			if(!my.ROOM.game.chain) return;
 			var preChar = getChar.call(my, text);
 			var preSubChar = getSubChar.call(my, preChar);
-			var firstMove = my.game.chain.length < 1;
+			var firstMove = my.ROOM.game.chain.length < 1;
 
 			function preApproved(){
 				function approved(){
-					if(my.game.late) return;
-					if(!my.game.chain) return;
-					if(!my.game.dic) return;
+					if(my.ROOM.game.late) return;
+					if(!my.ROOM.game.chain) return;
+					if(!my.ROOM.game.dic) return;
 
-					my.game.loading = false;
-					my.game.late = true;
-					clearTimeout(my.game.turnTimer);
-					t = tv - my.game.turnAt;
-					score = my.getScore(text, t);
-					my.game.dic[text] = (my.game.dic[text] || 0) + 1;
-					my.game.chain.push(text);
-					my.game.roundTime -= t;
-					my.game.char = preChar;
-					my.game.subChar = preSubChar;
+					my.ROOM.game.loading = false;
+					my.ROOM.game.late = true;
+					clearTimeout(my.ROOM.game.turnTimer);
+					t = tv - my.ROOM.game.turnAt;
+					score = my.ROOM.getScore(text, t);
+					my.ROOM.game.dic[text] = (my.ROOM.game.dic[text] || 0) + 1;
+					my.ROOM.game.chain.push(text);
+					my.ROOM.game.roundTime -= t;
+					my.ROOM.game.char = preChar;
+					my.ROOM.game.subChar = preSubChar;
 					client.game.score += score;
 					client.publish('turnEnd', {
 						ok: true,
@@ -258,51 +258,51 @@ module.exports = class {
 						theme: $doc.theme,
 						wc: $doc.type,
 						score: score,
-						bonus: (my.game.mission === true) ? score - my.getScore(text, t, true) : 0,
+						bonus: (my.ROOM.game.mission === true) ? score - my.ROOM.getScore(text, t, true) : 0,
 						baby: $doc.baby
 					}, true);
-					if(my.game.mission === true){
-						my.game.mission = getMission(my.rule.lang);
+					if(my.ROOM.game.mission === true){
+						my.ROOM.game.mission = getMission(my.ROOM.rule.lang);
 					}
-					setTimeout(my.turnNext, my.game.turnTime / 6);
+					setTimeout(my.ROOM.turnNext, my.ROOM.game.turnTime / 6);
 					if(!client.robot){
 						client.invokeWordPiece(text, 1);
-						DB.kkutu[l].update([ '_id', text ]).set([ 'hit', $doc.hit + 1 ]).on();
+						my.DB.kkutu[l].update([ '_id', text ]).set([ 'hit', $doc.hit + 1 ]).on();
 					}
 				}
-				if(firstMove || my.opts.manner) getAuto.call(my, preChar, preSubChar, 1).then(function(w){
+				if(firstMove || my.ROOM.opts.manner) getAuto.call(my, preChar, preSubChar, 1).then(function(w){
 					if(w) approved();
 					else{
-						my.game.loading = false;
+						my.ROOM.game.loading = false;
 						client.publish('turnError', { code: firstMove ? 402 : 403, value: text }, true);
 						if(client.robot){
-							my.readyRobot(client);
+							my.ROOM.readyRobot(client);
 						}
 					}
 				});
 				else approved();
 			}
 			function denied(code){
-				my.game.loading = false;
+				my.ROOM.game.loading = false;
 				client.publish('turnError', { code: code || 404, value: text }, true);
 			}
 			if($doc){
-				if(!my.opts.injeong && ($doc.flag & Const.KOR_FLAG.INJEONG)) denied();
-				else if(my.opts.strict && (!$doc.type.match(Const.KOR_STRICT) || $doc.flag >= 4)) denied(406);
-				else if(my.opts.loanword && ($doc.flag & Const.KOR_FLAG.LOANWORD)) denied(405);
+				if(!my.ROOM.opts.injeong && ($doc.flag & Const.KOR_FLAG.INJEONG)) denied();
+				else if(my.ROOM.opts.strict && (!$doc.type.match(Const.KOR_STRICT) || $doc.flag >= 4)) denied(406);
+				else if(my.ROOM.opts.loanword && ($doc.flag & Const.KOR_FLAG.LOANWORD)) denied(405);
 				else preApproved();
 			}else{
 				denied();
 			}
 		}
 		function isChainable(){
-			var type = Const.GAME_TYPE[my.mode];
-			var char = my.game.char, subChar = my.game.subChar;
+			var type = Const.GAME_TYPE[my.ROOM.mode];
+			var char = my.ROOM.game.char, subChar = my.ROOM.game.subChar;
 			var l = char.length;
 
 			if(!text) return false;
 			if(text.length <= l) return false;
-			if(my.game.wordLength && text.length != my.game.wordLength) return false;
+			if(my.ROOM.game.wordLength && text.length != my.ROOM.game.wordLength) return false;
 			if(type == "KAP") return (text.slice(-1) == char) || (text.slice(-1) == subChar);
 			switch(l){
 				case 1: return (text[0] == char) || (text[0] == subChar);
@@ -311,44 +311,44 @@ module.exports = class {
 				default: return false;
 			}
 		}
-		DB.kkutu[l].findOne([ '_id', text ],
+		my.DB.kkutu[l].findOne([ '_id', text ],
 			(l == "ko") ? [ 'type', Const.KOR_GROUP ] : [ '_id', Const.ENG_ID ]
 		).on(onDB);
 	}
 
 	getScore(text, delay, ignoreMission) {
-		var my = this;
-		var tr = 1 - delay / my.game.turnTime;
+		var tr = 1 - delay / this.ROOM.game.turnTime;
 		var score, arr;
 
-		if(!text || !my.game.chain || !my.game.dic) return 0;
-		score = Const.getPreScore(text, my.game.chain, tr);
+		if(!text || !this.ROOM.game.chain || !this.ROOM.game.dic) return 0;
+		score = Const.getPreScore(text, this.ROOM.game.chain, tr);
 
-		if(my.game.dic[text]) score *= 15 / (my.game.dic[text] + 15);
-		if(!ignoreMission) if(arr = text.match(new RegExp(my.game.mission, "g"))){
+		if(this.ROOM.game.dic[text]) score *= 15 / (this.ROOM.game.dic[text] + 15);
+		if(!ignoreMission) if(arr = text.match(new RegExp(this.ROOM.game.mission, "g"))){
 			score += score * 0.5 * arr.length;
-			my.game.mission = true;
+			this.ROOM.game.mission = true;
 		}
 		return Math.round(score);
 	}
 
 	readyRobot(robot) {
-		var my = this;
 		var level = robot.level;
 		var delay = ROBOT_START_DELAY[level];
 		var ended = {};
 		var w, text, i;
 		var lmax;
-		var isRev = Const.GAME_TYPE[my.mode] == "KAP";
+		var isRev = Const.GAME_TYPE[this.ROOM.mode] == "KAP";
 
-		getAuto.call(my, my.game.char, my.game.subChar, 2).then(function(list){
+		var my = this;
+
+		getAuto.call(this, this.ROOM.game.char, this.ROOM.game.subChar, 2).then(function(list){
 			if(list.length){
 				list.sort(function(a, b){ return b.hit - a.hit; });
 				if(ROBOT_HIT_LIMIT[level] > list[0].hit) denied();
 				else{
 					if(level >= 3 && !robot._done.length){
 						if(Math.random() < 0.5) list.sort(function(a, b){ return b._id.length - a._id.length; });
-						if(list[0]._id.length < 8 && my.game.turnTime >= 2300){
+						if(list[0]._id.length < 8 && my.ROOM.game.turnTime >= 2300){
 							for(i in list){
 								w = list[i]._id.charAt(isRev ? 0 : (list[i]._id.length - 1));
 								if(!ended.hasOwnProperty(w)) ended[w] = [];
@@ -368,7 +368,7 @@ module.exports = class {
 			}else denied();
 		});
 		function denied(){
-			text = isRev ? `T.T ...${my.game.char}` : `${my.game.char}... T.T`;
+			text = isRev ? `T.T ...${my.ROOM.game.char}` : `${my.ROOM.game.char}... T.T`;
 			after();
 		}
 		function pickList(list){
@@ -384,7 +384,7 @@ module.exports = class {
 		function after(){
 			delay += text.length * ROBOT_TYPE_COEF[level];
 			robot._done.push(text);
-			setTimeout(my.turnRobot, delay, robot, text);
+			setTimeout(my.ROOM.turnRobot, delay, robot, text);
 		}
 		function getWishList(list){
 			var R = new Lizard.Tail();
@@ -393,10 +393,10 @@ module.exports = class {
 
 			for(i in list) wz.push(getWish(list[i]));
 			Lizard.all(wz).then(function($res){
-				if(!my.game.chain) return;
+				if(!my.ROOM.game.chain) return;
 				$res.sort(function(a, b){ return a.length - b.length; });
 
-				if(my.opts.manner || !my.game.chain.length){
+				if(my.ROOM.opts.manner || !my.ROOM.game.chain.length){
 					while(res = $res.shift()) if(res.length) break;
 				}else res = $res.shift();
 				R.go(res ? res.char : null);
@@ -406,13 +406,14 @@ module.exports = class {
 		function getWish(char){
 			var R = new Lizard.Tail();
 
-			DB.kkutu[my.rule.lang].find([ '_id', new RegExp(isRev ? `.${char}$` : `^${char}.`) ]).limit(10).on(function($res){
+			my.DB.kkutu[my.ROOM.rule.lang].find([ '_id', new RegExp(isRev ? `.${char}$` : `^${char}.`) ]).limit(10).on(function($res){
 				R.go({ char: char, length: $res.length });
 			});
 			return R;
 		}
 	}
 }
+
 function getMission(l){
 	var arr = (l == "ko") ? Const.MISSION_ko : Const.MISSION_en;
 	
@@ -425,12 +426,11 @@ function getAuto(char, subc, type){
 		1 ���� ����
 		2 �ܾ� ���
 	*/
-	var my = this;
 	var R = new Lizard.Tail();
-	var gameType = Const.GAME_TYPE[my.mode];
+	var gameType = Const.GAME_TYPE[this.ROOM.mode];
 	var adv, adc;
-	var key = gameType + "_" + keyByOptions(my.opts);
-	var MAN = DB.kkutu_manner[my.rule.lang];
+	var key = gameType + "_" + keyByOptions(this.ROOM.opts);
+	var MAN = this.DB.kkutu_manner[this.ROOM.rule.lang];
 	var bool = type == 1;
 	
 	adc = char + (subc ? ("|"+subc) : "");
@@ -445,7 +445,7 @@ function getAuto(char, subc, type){
 			adv = `^(${adc})...`;
 			break;
 		case 'KKT':
-			adv = `^(${adc}).{${my.game.wordLength-1}}$`;
+			adv = `^(${adc}).{${this.ROOM.game.wordLength-1}}$`;
 			break;
 		case 'KAP':
 			adv = `.(${adc})$`;
@@ -462,15 +462,16 @@ function getAuto(char, subc, type){
 			produce();
 		}
 	});
+	var my = this;
 	function produce(){
 		var aqs = [[ '_id', new RegExp(adv) ]];
 		var aft;
 		var lst;
 		
-		if(!my.opts.injeong) aqs.push([ 'flag', { '$nand': Const.KOR_FLAG.INJEONG } ]);
-		if(my.rule.lang == "ko"){
-			if(my.opts.loanword) aqs.push([ 'flag', { '$nand': Const.KOR_FLAG.LOANWORD } ]);
-			if(my.opts.strict) aqs.push([ 'type', Const.KOR_STRICT ], [ 'flag', { $lte: 3 } ]);
+		if(!my.ROOM.opts.injeong) aqs.push([ 'flag', { '$nand': Const.KOR_FLAG.INJEONG } ]);
+		if(my.ROOM.rule.lang == "ko"){
+			if(my.ROOM.opts.loanword) aqs.push([ 'flag', { '$nand': Const.KOR_FLAG.LOANWORD } ]);
+			if(my.ROOM.opts.strict) aqs.push([ 'type', Const.KOR_STRICT ], [ 'flag', { $lte: 3 } ]);
 			else aqs.push([ 'type', Const.KOR_GROUP ]);
 		}else{
 			aqs.push([ '_id', Const.ENG_ID ]);
@@ -493,9 +494,9 @@ function getAuto(char, subc, type){
 				};
 				break;
 		}
-		DB.kkutu[my.rule.lang].find.apply(this, aqs).limit(bool ? 1 : 123).on(function($md){
+		my.DB.kkutu[my.ROOM.rule.lang].find.apply(this, aqs).limit(bool ? 1 : 123).on(function($md){
 			forManner($md);
-			if(my.game.chain) aft($md.filter(function(item){ return !my.game.chain.includes(item); }));
+			if(my.ROOM.game.chain) aft($md.filter(function(item){ return !my.ROOM.game.chain.includes(item); }));
 			else aft($md);
 		});
 		function forManner(list){
@@ -527,9 +528,7 @@ function shuffle(arr){
 	return r;
 }
 function getChar(text){
-	var my = this;
-	
-	switch(Const.GAME_TYPE[my.mode]){
+	switch(Const.GAME_TYPE[this.ROOM.mode]){
 		case 'EKT': return text.slice(text.length - 3);
 		case 'ESH':
 		case 'KKT':
@@ -538,13 +537,12 @@ function getChar(text){
 	}
 };
 function getSubChar(char){
-	var my = this;
 	var r;
 	var c = char.charCodeAt();
 	var k;
 	var ca, cb, cc;
 	
-	switch(Const.GAME_TYPE[my.mode]){
+	switch(Const.GAME_TYPE[this.ROOM.mode]){
 		case "EKT":
 			if(char.length > 2) r = char.slice(1);
 			break;

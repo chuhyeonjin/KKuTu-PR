@@ -18,8 +18,6 @@
 
 var Const = require('kkutu-common/const');
 var Lizard = require('kkutu-common/lizard');
-var DB;
-var DIC;
 
 const LANG_STATS = { 'ko': {
 	reg: /^[가-힣]{2,5}$/,
@@ -42,14 +40,14 @@ function getBoard(words, len){
 }
 
 module.exports = class {
-	constructor(_DB, _DIC) {
-		DB = _DB;
-		DIC = _DIC;
+	constructor(_DB, _DIC, _ROOM) {
+		this.DB = _DB;
+		this.DIC = _DIC;
+		this.ROOM = _ROOM;
 	}
 
 	getTitle() {
 		var R = new Lizard.Tail();
-		var my = this;
 
 		// FIXME: 0.5초의 성능지연
 		setTimeout(function(){
@@ -59,17 +57,16 @@ module.exports = class {
 	}
 
 	roundReady() {
-		var my = this;
 		var words = [];
-		var conf = LANG_STATS[my.rule.lang];
+		var conf = LANG_STATS[this.ROOM.rule.lang];
 		var len = conf.len;
 		var i, w;
 
-		clearTimeout(my.game.turnTimer);
-		my.game.round++;
-		my.game.roundTime = my.time * 1000;
-		if(my.game.round <= my.round){
-			DB.kkutu[my.rule.lang].find([ '_id', conf.reg ], [ 'hit', { $gte: 1 } ], conf.add).limit(1234).on(function($docs){
+		clearTimeout(this.ROOM.game.turnTimer);
+		this.ROOM.game.round++;
+		this.ROOM.game.roundTime = this.ROOM.time * 1000;
+		if(this.ROOM.game.round <= this.ROOM.round){
+			this.DB.kkutu[this.ROOM.rule.lang].find([ '_id', conf.reg ], [ 'hit', { $gte: 1 } ], conf.add).limit(1234).on(($docs) => {
 				$docs.sort(function(a, b){ return Math.random() < 0.5; });
 				while(w = $docs.shift()){
 					words.push(w._id);
@@ -77,58 +74,53 @@ module.exports = class {
 					if((len -= i) <= conf.min) break;
 				}
 				words.sort(function(a, b){ return b.length - a.length; });
-				my.game.words = [];
-				my.game.board = getBoard(words, conf.len);
-				my.byMaster('roundReady', {
-					round: my.game.round,
-					board: my.game.board
+				this.ROOM.game.words = [];
+				this.ROOM.game.board = getBoard(words, conf.len);
+				this.ROOM.byMaster('roundReady', {
+					round: this.ROOM.game.round,
+					board: this.ROOM.game.board
 				}, true);
-				my.game.turnTimer = setTimeout(my.turnStart, 2400);
+				this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnStart, 2400);
 			});
 		}else{
-			my.roundEnd();
+			this.ROOM.roundEnd();
 		}
 	}
 
 	turnStart() {
-		var my = this;
-
-		my.game.late = false;
-		my.game.roundAt = (new Date()).getTime();
-		my.game.qTimer = setTimeout(my.turnEnd, my.game.roundTime);
-		my.byMaster('turnStart', {
-			roundTime: my.game.roundTime
+		this.ROOM.game.late = false;
+		this.ROOM.game.roundAt = (new Date()).getTime();
+		this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, this.ROOM.game.roundTime);
+		this.ROOM.byMaster('turnStart', {
+			roundTime: this.ROOM.game.roundTime
 		}, true);
 	}
 
 	turnEnd() {
-		var my = this;
+		this.ROOM.game.late = true;
 
-		my.game.late = true;
-
-		my.byMaster('turnEnd', {});
-		my.game._rrt = setTimeout(my.roundReady, 3000);
+		this.ROOM.byMaster('turnEnd', {});
+		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, 3000);
 	}
 
-	submit(client, text, data) {
-		var my = this;
-		var play = (my.game.seq ? my.game.seq.includes(client.id) : false) || client.robot;
+	submit(client, text) {
+		var play = (this.ROOM.game.seq ? this.ROOM.game.seq.includes(client.id) : false) || client.robot;
 		var score, i;
 
-		if(!my.game.words) return;
+		if(!this.ROOM.game.words) return;
 		if(!text) return;
 
 		if(!play) return client.chat(text);
-		if(text.length < (my.opts.no2 ? 3 : 2)){
+		if(text.length < (this.ROOM.opts.no2 ? 3 : 2)){
 			return client.chat(text);
 		}
-		if(my.game.words.indexOf(text) != -1){
+		if(this.ROOM.game.words.indexOf(text) != -1){
 			return client.chat(text);
 		}
-		DB.kkutu[my.rule.lang].findOne([ '_id', text ]).limit([ '_id', true ]).on(function($doc){
-			if(!my.game.board) return;
+		this.DB.kkutu[this.ROOM.rule.lang].findOne([ '_id', text ]).limit([ '_id', true ]).on(($doc) => {
+			if(!this.ROOM.game.board) return;
 
-			var newBoard = my.game.board;
+			var newBoard = this.ROOM.game.board;
 			var _newBoard = newBoard;
 			var wl;
 
@@ -143,9 +135,9 @@ module.exports = class {
 					_newBoard = newBoard;
 				}
 				// 성공
-				score = my.getScore(text);
-				my.game.words.push(text);
-				my.game.board = newBoard;
+				score = this.ROOM.getScore(text);
+				this.ROOM.game.words.push(text);
+				this.ROOM.game.board = newBoard;
 				client.game.score += score;
 				client.publish('turnEnd', {
 					target: client.id,
@@ -157,28 +149,9 @@ module.exports = class {
 				client.chat(text);
 			}
 		});
-		/*if((i = my.game.words.indexOf(text)) != -1){
-            score = my.getScore(text);
-            my.game.words.splice(i, 1);
-            client.game.score += score;
-            client.publish('turnEnd', {
-                target: client.id,
-                value: text,
-                score: score
-            }, true);
-            if(!my.game.words.length){
-                clearTimeout(my.game.qTimer);
-                my.turnEnd();
-            }
-            client.invokeWordPiece(text, 1.4);
-        }else{
-            client.chat(text);
-        }*/
 	}
 
-	getScore(text, delay) {
-		var my = this;
-
+	getScore(text) {
 		return Math.round(Math.pow(text.length - 1, 1.6) * 8);
 	}
 }

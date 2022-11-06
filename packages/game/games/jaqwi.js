@@ -18,24 +18,22 @@
 
 var Const = require('kkutu-common/const');
 var Lizard = require('kkutu-common/lizard');
-var DB;
-var DIC;
 
 var ROBOT_CATCH_RATE = [ 0.1, 0.3, 0.5, 0.7, 0.99 ];
 var ROBOT_TYPE_COEF = [ 2000, 1200, 800, 300, 0 ];
 var robotTimers = {};
 
 module.exports = class {
-	constructor(_DB, _DIC) {
-		DB = _DB;
-		DIC = _DIC;
+	constructor(_DB, _DIC, _ROOM) {
+		this.DB = _DB;
+		this.DIC = _DIC;
+		this.ROOM = _ROOM;
 	}
 
 	getTitle() {
 		var R = new Lizard.Tail();
-		var my = this;
 
-		my.game.done = [];
+		this.ROOM.game.done = [];
 		setTimeout(function(){
 			R.go("①②③④⑤⑥⑦⑧⑨⑩");
 		}, 500);
@@ -43,103 +41,98 @@ module.exports = class {
 	}
 
 	roundReady() {
-		var my = this;
-		var ijl = my.opts.injpick.length;
+		var ijl = this.ROOM.opts.injpick.length;
 
-		clearTimeout(my.game.qTimer);
-		clearTimeout(my.game.hintTimer);
-		clearTimeout(my.game.hintTimer2);
-		my.game.themeBonus = 0.3 * Math.log(0.6 * ijl + 1);
-		my.game.winner = [];
-		my.game.giveup = [];
-		my.game.round++;
-		my.game.roundTime = my.time * 1000;
-		if(my.game.round <= my.round){
-			my.game.theme = my.opts.injpick[Math.floor(Math.random() * ijl)];
-			getAnswer.call(my, my.game.theme).then(function($ans){
-				if(!my.game.done) return;
+		clearTimeout(this.ROOM.game.qTimer);
+		clearTimeout(this.ROOM.game.hintTimer);
+		clearTimeout(this.ROOM.game.hintTimer2);
+		this.ROOM.game.themeBonus = 0.3 * Math.log(0.6 * ijl + 1);
+		this.ROOM.game.winner = [];
+		this.ROOM.game.giveup = [];
+		this.ROOM.game.round++;
+		this.ROOM.game.roundTime = this.ROOM.time * 1000;
+		if(this.ROOM.game.round <= this.ROOM.round){
+			this.ROOM.game.theme = this.ROOM.opts.injpick[Math.floor(Math.random() * ijl)];
+			getAnswer.call(this, this.ROOM.game.theme).then(($ans) => {
+				if(!this.ROOM.game.done) return;
 
 				// $ans가 null이면 골치아프다...
-				my.game.late = false;
-				my.game.answer = $ans || {};
-				my.game.done.push($ans._id);
+				this.ROOM.game.late = false;
+				this.ROOM.game.answer = $ans || {};
+				this.ROOM.game.done.push($ans._id);
 				$ans.mean = ($ans.mean.length > 20) ? $ans.mean : getConsonants($ans._id, Math.round($ans._id.length / 2));
-				my.game.hint = getHint($ans);
-				my.byMaster('roundReady', {
-					round: my.game.round,
-					theme: my.game.theme
+				this.ROOM.game.hint = getHint($ans);
+				this.ROOM.byMaster('roundReady', {
+					round: this.ROOM.game.round,
+					theme: this.ROOM.game.theme
 				}, true);
-				setTimeout(my.turnStart, 2400);
+				setTimeout(this.ROOM.turnStart, 2400);
 			});
 		}else{
-			my.roundEnd();
+			this.ROOM.roundEnd();
 		}
 	}
 
 	turnStart() {
-		var my = this;
 		var i;
 
-		if(!my.game.answer) return;
+		if(!this.ROOM.game.answer) return;
 
-		my.game.conso = getConsonants(my.game.answer._id, 1);
-		my.game.roundAt = (new Date()).getTime();
-		my.game.meaned = 0;
-		my.game.primary = 0;
-		my.game.qTimer = setTimeout(my.turnEnd, my.game.roundTime);
-		my.game.hintTimer = setTimeout(function(){ turnHint.call(my); }, my.game.roundTime * 0.333);
-		my.game.hintTimer2 = setTimeout(function(){ turnHint.call(my); }, my.game.roundTime * 0.667);
-		my.byMaster('turnStart', {
-			char: my.game.conso,
-			roundTime: my.game.roundTime
+		this.ROOM.game.conso = getConsonants(this.ROOM.game.answer._id, 1);
+		this.ROOM.game.roundAt = (new Date()).getTime();
+		this.ROOM.game.meaned = 0;
+		this.ROOM.game.primary = 0;
+		this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, this.ROOM.game.roundTime);
+		this.ROOM.game.hintTimer = setTimeout(() => { turnHint.call(this); }, this.ROOM.game.roundTime * 0.333);
+		this.ROOM.game.hintTimer2 = setTimeout(() => { turnHint.call(this); }, this.ROOM.game.roundTime * 0.667);
+		this.ROOM.byMaster('turnStart', {
+			char: this.ROOM.game.conso,
+			roundTime: this.ROOM.game.roundTime
 		}, true);
 
-		for(i in my.game.robots){
-			my.readyRobot(my.game.robots[i]);
+		for(i in this.ROOM.game.robots){
+			this.ROOM.readyRobot(this.ROOM.game.robots[i]);
 		}
 	}
 
 	turnEnd() {
-		var my = this;
-
-		if(my.game.answer){
-			my.game.late = true;
-			my.byMaster('turnEnd', {
-				answer: my.game.answer ? my.game.answer._id : ""
+		if(this.ROOM.game.answer){
+			this.ROOM.game.late = true;
+			this.ROOM.byMaster('turnEnd', {
+				answer: this.ROOM.game.answer ? this.ROOM.game.answer._id : ""
 			});
 		}
-		my.game._rrt = setTimeout(my.roundReady, 2500);
+		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, 2500);
 	}
 
 	submit(client, text) {
-		var my = this;
 		var score, t, i;
-		var $ans = my.game.answer;
+		var $ans = this.ROOM.game.answer;
 		var now = (new Date()).getTime();
-		var play = (my.game.seq ? my.game.seq.includes(client.id) : false) || client.robot;
-		var gu = my.game.giveup ? my.game.giveup.includes(client.id) : true;
+		var play = (this.ROOM.game.seq ? this.ROOM.game.seq.includes(client.id) : false) || client.robot;
+		var gu = this.ROOM.game.giveup ? this.ROOM.game.giveup.includes(client.id) : true;
 
-		if(!my.game.winner) return;
-		if(my.game.winner.indexOf(client.id) == -1
+		if(!this.ROOM.game.winner) return;
+		if(this.ROOM.game.winner.indexOf(client.id) == -1
 			&& text == $ans._id
 			&& play && !gu
 		){
-			t = now - my.game.roundAt;
-			if(my.game.primary == 0) if(my.game.roundTime - t > 10000){ // 가장 먼저 맞힌 시점에서 10초 이내에 맞히면 점수 약간 획득
-				clearTimeout(my.game.qTimer);
-				my.game.qTimer = setTimeout(my.turnEnd, 10000);
-				for(i in my.game.robots){
-					if(my.game.roundTime > my.game.robots[i]._delay){
-						clearTimeout(my.game.robots[i]._timer);
-						if(client != my.game.robots[i]) if(Math.random() < ROBOT_CATCH_RATE[my.game.robots[i].level])
-							my.game.robots[i]._timer = setTimeout(my.turnRobot, ROBOT_TYPE_COEF[my.game.robots[i].level], my.game.robots[i], text);
+			t = now - this.ROOM.game.roundAt;
+			if(this.ROOM.game.primary == 0) if(this.ROOM.game.roundTime - t > 10000){ // 가장 먼저 맞힌 시점에서 10초 이내에 맞히면 점수 약간 획득
+				clearTimeout(this.ROOM.game.qTimer);
+				this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, 10000);
+				for(i in this.ROOM.game.robots){
+					if(this.ROOM.game.roundTime > this.ROOM.game.robots[i]._delay){
+						clearTimeout(this.ROOM.game.robots[i]._timer);
+						if(client != this.ROOM.game.robots[i]) if(Math.random() < ROBOT_CATCH_RATE[this.ROOM.game.robots[i].level])
+							this.ROOM.game.robots[i]._timer = setTimeout(this.ROOM.turnRobot, ROBOT_TYPE_COEF[this.ROOM.game.robots[i].level], this.ROOM.game.robots[i], text);
 					}
 				}
 			}
-			clearTimeout(my.game.hintTimer);
-			score = my.getScore(text, t);
-			my.game.primary++;
-			my.game.winner.push(client.id);
+			clearTimeout(this.ROOM.game.hintTimer);
+			score = this.ROOM.getScore(text, t);
+			this.ROOM.game.primary++;
+			this.ROOM.game.winner.push(client.id);
 			client.game.score += score;
 			client.publish('turnEnd', {
 				target: client.id,
@@ -149,11 +142,11 @@ module.exports = class {
 				bonus: 0
 			}, true);
 			client.invokeWordPiece(text, 0.9);
-			while(my.game.meaned < my.game.hint.length){
-				turnHint.call(my);
+			while(this.ROOM.game.meaned < this.ROOM.game.hint.length){
+				turnHint.call(this);
 			}
 		}else if(play && !gu && (text == "gg" || text == "ㅈㅈ")){
-			my.game.giveup.push(client.id);
+			this.ROOM.game.giveup.push(client.id);
 			client.publish('turnEnd', {
 				target: client.id,
 				giveup: true
@@ -161,37 +154,35 @@ module.exports = class {
 		}else{
 			client.chat(text);
 		}
-		if(play) if(my.game.primary + my.game.giveup.length >= my.game.seq.length){
-			clearTimeout(my.game.hintTimer);
-			clearTimeout(my.game.hintTimer2);
-			clearTimeout(my.game.qTimer);
-			my.turnEnd();
+		if(play) if(this.ROOM.game.primary + this.ROOM.game.giveup.length >= this.ROOM.game.seq.length){
+			clearTimeout(this.ROOM.game.hintTimer);
+			clearTimeout(this.ROOM.game.hintTimer2);
+			clearTimeout(this.ROOM.game.qTimer);
+			this.ROOM.turnEnd();
 		}
 	}
 
 	getScore(text, delay) {
-		var my = this;
-		var rank = my.game.hum - my.game.primary + 3;
-		var tr = 1 - delay / my.game.roundTime;
+		var rank = this.ROOM.game.hum - this.ROOM.game.primary + 3;
+		var tr = 1 - delay / this.ROOM.game.roundTime;
 		var score = 6 * Math.pow(rank, 1.4) * ( 0.5 + 0.5 * tr );
 
-		return Math.round(score * my.game.themeBonus);
+		return Math.round(score * this.ROOM.game.themeBonus);
 	}
 
 	readyRobot(robot) {
-		var my = this;
 		var level = robot.level;
 		var delay, text;
 		var i;
 
-		if(!my.game.answer) return;
+		if(!this.ROOM.game.answer) return;
 		clearTimeout(robot._timer);
 		robot._delay = 99999999;
 		for(i=0; i<2; i++){
 			if(Math.random() < ROBOT_CATCH_RATE[level]){
-				text = my.game.answer._id;
-				delay = my.game.roundTime / 3 * i + text.length * ROBOT_TYPE_COEF[level];
-				robot._timer = setTimeout(my.turnRobot, delay, robot, text);
+				text = this.ROOM.game.answer._id;
+				delay = this.ROOM.game.roundTime / 3 * i + text.length * ROBOT_TYPE_COEF[level];
+				robot._timer = setTimeout(this.ROOM.turnRobot, delay, robot, text);
 				robot._delay = delay;
 				break;
 			}else continue;
@@ -199,10 +190,8 @@ module.exports = class {
 	}
 }
 function turnHint(){
-	var my = this;
-	
-	my.byMaster('turnHint', {
-		hint: my.game.hint[my.game.meaned++]
+	this.ROOM.byMaster('turnHint', {
+		hint: this.ROOM.game.hint[this.ROOM.game.meaned++]
 	}, true);
 }
 function getConsonants(word, lucky){
@@ -242,19 +231,18 @@ function getHint($ans){
 	
 	return R;
 }
-function getAnswer(theme, nomean){
-	var my = this;
+function getAnswer(theme){
 	var R = new Lizard.Tail();
-	var args = [ [ '_id', { $nin: my.game.done } ] ];
-	
+	var args = [ [ '_id', { $nin: this.ROOM.game.done } ] ];
+
 	args.push([ 'theme', new RegExp("(,|^)(" + theme + ")(,|$)") ]);
 	args.push([ 'type', Const.KOR_GROUP ]);
 	args.push([ 'flag', { $lte: 7 } ]);
-	DB.kkutu['ko'].find.apply(my, args).on(function($res){
+	this.DB.kkutu['ko'].find.apply(this.ROOM, args).on(function($res){
 		if(!$res) return R.go(null);
 		var pick;
 		var len = $res.length;
-		
+
 		if(!len) return R.go(null);
 		do{
 			pick = Math.floor(Math.random() * len);
