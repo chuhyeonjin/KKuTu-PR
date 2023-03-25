@@ -16,12 +16,24 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var TYL = require('./typing_const');
-var Lizard = require('kkutu-common/lizard');
+const File = require('fs');
 
-var LIST_LENGTH = 200;
-var DOUBLE_VOWELS = [ 9, 10, 11, 14, 15, 16, 19 ];
-var DOUBLE_TAILS = [ 3, 5, 6, 9, 10, 11, 12, 13, 14, 15, 18 ];
+// { 'langCode': ["proverb1", ...], ... }
+const PROVERBS =
+	Object.fromEntries(
+		File.readFileSync(`${__dirname}/../../../data/proverbs.txt`, {encoding: 'utf-8'})
+			.split('~~~')
+			.map((langAndProverbs) => {
+				const split = langAndProverbs.split(/\r\n|\r|\n/);
+				return [split.shift(), split];
+			})
+	);
+
+const LIST_LENGTH = 200;
+// ㅘ, ㅙ, ㅚ, ㅝ, ㅞ, ㅟ, ㅢ
+const DOUBLE_VOWELS = [ 9, 10, 11, 14, 15, 16, 19 ];
+// ㄳ, ㄵ, ㄶ, ㄺ, ㄻ, ㄼ, ㄽ, ㄾ, ㄿ, ㅀ, ㅄ
+const DOUBLE_TAILS = [ 3, 5, 6, 9, 10, 11, 12, 13, 14, 15, 18 ];
 
 module.exports = class {
 	constructor(_DB, _DIC, _ROOM) {
@@ -31,52 +43,38 @@ module.exports = class {
 	}
 
 	traverse(func) {
-		var i, o;
-
-		for(i in this.ROOM.game.seq){
-			if(!(o = this.DIC[this.ROOM.game.seq[i]])) continue;
-			if(!o.game) continue;
-			func(o);
+		for(const user of this.ROOM.game.seq){
+			const o = this.DIC[user];
+			if(o?.game) func(o);
 		}
 	}
 
-	getTitle() {
-		var R = new Lizard.Tail();
-		var my = this;
-		var i, j;
+	async getTitle() {
+		const pick = list => {
+			this.ROOM.game.lists =
+				new Array(this.ROOM.round).fill()
+					.map(() => new Array(LIST_LENGTH).fill()
+						.map(() => list[Math.floor(Math.random() * list.length)]))
+		};
 
-		if(this.ROOM.opts.proverb) pick(TYL.PROVERBS[this.ROOM.rule.lang]);
-		else this.DB.kkutu[this.ROOM.rule.lang].find([ '_id', /^.{2,5}$/ ], [ 'hit', { $gte: 1 } ]).limit(416).on(function($res){
-			pick($res.map(function(item){ return item._id; }));
+		if(this.ROOM.opts.proverb) pick(PROVERBS[this.ROOM.rule.lang]);
+		else this.DB.kkutu[this.ROOM.rule.lang].find([ '_id', /^.{2,5}$/ ], [ 'hit', { $gte: 1 } ]).limit(416).on(($res) => {
+			pick($res.map((item) => item._id ));
 		});
-		function pick(list){
-			var data = [];
-			var len = list.length;
-			var arr;
 
-			for(i=0; i<my.ROOM.round; i++){
-				arr = [];
-				for(j=0; j<LIST_LENGTH; j++){
-					arr.push(list[Math.floor(Math.random() * len)]);
-				}
-				data.push(arr);
-			}
-			my.ROOM.game.lists = data;
-			R.go("①②③④⑤⑥⑦⑧⑨⑩");
-		}
 		this.traverse((o) => {
 			o.game.spl = 0;
 		});
-		return R;
+
+		return "①②③④⑤⑥⑦⑧⑨⑩";
 	}
 
 	roundReady() {
-		var scores = {};
-
 		if(!this.ROOM.game.lists) return;
 
 		this.ROOM.game.round++;
 		this.ROOM.game.roundTime = this.ROOM.time * 1000;
+
 		if(this.ROOM.game.round <= this.ROOM.round){
 			this.ROOM.game.clist = this.ROOM.game.lists.shift();
 			this.ROOM.byMaster('roundReady', {
@@ -84,7 +82,8 @@ module.exports = class {
 				list: this.ROOM.game.clist
 			}, true);
 			setTimeout(this.ROOM.turnStart, 2400);
-		}else{
+		} else {
+			const scores = {};
 			this.traverse((o) => {
 				scores[o.id] = Math.round(o.game.spl / this.ROOM.round);
 			});
@@ -104,29 +103,30 @@ module.exports = class {
 	}
 
 	turnEnd() {
-		var spl = {};
-		var sv;
+		const spl = {};
 
 		this.ROOM.game.late = true;
+
 		this.traverse((o) => {
-			sv = (o.game.semi + o.game.index - o.game.miss) / this.ROOM.time * 60;
+			const sv = (o.game.semi + o.game.index - o.game.miss) / this.ROOM.time * 60;
 			spl[o.id] = Math.round(sv);
 			o.game.spl += sv;
 		});
+
 		this.ROOM.byMaster('turnEnd', {
 			ok: false,
 			speed: spl
 		});
-		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, (this.ROOM.game.round == this.ROOM.round) ? 3000 : 10000);
+
+		const isGameEnded = this.ROOM.game.round === this.ROOM.round
+		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, isGameEnded ? 3000 : 10000);
 	}
 
 	submit(client, text) {
-		var score;
+		if (!client.game) return;
 
-		if(!client.game) return;
-
-		if(this.ROOM.game.clist[client.game.index] == text){
-			score = this.ROOM.getScore(text);
+		if(this.ROOM.game.clist[client.game.index] === text){
+			const score = this.ROOM.getScore(text);
 
 			client.game.semi += score;
 			client.game.score += score;
@@ -137,33 +137,35 @@ module.exports = class {
 				score: score
 			}, true);
 			client.invokeWordPiece(text, 0.5);
-		}else{
+		} else {
 			client.game.miss++;
 			client.send('turnEnd', { error: true });
 		}
-		if(!this.ROOM.game.clist[++client.game.index]) client.game.index = 0;
+
+		client.game.index++;
+		if(this.ROOM.game.clist.length <= client.game.index) client.game.index = 0;
 	}
 
 	getScore(text) {
-		var i, len = text.length;
-		var r = 0, s, t;
-
 		switch(this.ROOM.rule.lang){
-			case 'ko':
-				for(i=0; i<len; i++){
-					s = text.charCodeAt(i);
-					if(s < 44032){
-						r++;
-					}else{
-						t = (s - 44032) % 28;
-						r += t ? 3 : 2;
-						if(DOUBLE_VOWELS.includes(Math.floor(((text.charCodeAt(i) - 44032) % 588) / 28))) r++;
-						if(DOUBLE_TAILS.includes(t)) r++;
-					}
+			case 'ko': {
+				let score = 0;
+				for (let i = 0; i < text.length; i++) {
+					const charCode = text.charCodeAt(i);
+					// 44032 == '가'
+					if (charCode >= 44032) {
+						if (DOUBLE_VOWELS.includes(Math.floor(((charCode - 44032) % 588) / 28))) score++;
+
+						// 종성, 0 -> 없음
+						const tail = (charCode - 44032) % 28;
+						score += tail ? 3 : 2;
+						if (DOUBLE_TAILS.includes(tail)) score++;
+					} else score++;
 				}
-				return r;
-			case 'en': return len;
-			default: return r;
+				return score;
+			}
+			case 'en': return text.length;
+			default: return 0;
 		}
 	}
 }
