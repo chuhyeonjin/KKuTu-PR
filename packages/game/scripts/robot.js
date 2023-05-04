@@ -16,27 +16,28 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var DB	 = require('kkutu-common/db');
-var len = Number(process.argv[2] || 10);
+const DB	 = require('kkutu-common/db');
+const len = Number(process.argv[2] || 10);
 
-DB.ready = function() {
-  var rank = 0;
-  var phit = 0;
-	
-  DB.kkutu['ko'].find(['hit', { $gte: 1 }]).sort(['hit', -1]).limit(len).on(function($res) {
-    var i; var $o; var c;
-    var res = [];
+DB.ready = () => {
+  DB.kkutu['ko'].find(['hit', { $gte: 1 }]).sort(['hit', -1]).limit(len).on(($res) => {
+    const res = [];
+
+    let rank = 0;
+    let previousHit = 0;
 		
-    for (i in $res) {
-      $o = $res[i];
-      if (phit == $o.hit) {
-        c = rank;
-      } else {
-        c = rank = Number(i) + 1;
-        phit = $o.hit;
+    for (const i in $res) {
+      const { _id: word, hit } = $res[i];
+
+      if (previousHit !== hit) {
+        rank = Number(i) + 1;
+        previousHit = hit;
       }
-      res.push(c + '위. ' + $o._id + ' (' + $o.hit + ')');
+      const c = rank;
+
+      res.push(`${c}위. ${word} (${hit})`);
     }
+
     console.log(res.join('\n'));
     process.exit();
   });
