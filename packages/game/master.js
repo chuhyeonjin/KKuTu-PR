@@ -18,17 +18,14 @@
 
 const Cluster = require('cluster');
 const File = require('fs');
-const WebSocket = require('ws');
-const https = require('https');
 const Const = require('kkutu-common/const');
 const JLog = require('kkutu-common/jjlog');
-const Secure = require('kkutu-common/secure');
 const KKuTu = require('./kkutu');
 const Recaptcha = require('./recaptcha');
 const GLOBAL = require('../../config/global.json');
+const { createWebSocketServer } = require('./websocket');
 // const Heapdump = require("heapdump");
 
-let HTTPS_Server;
 var MainDB;
 
 var Server;
@@ -548,17 +545,7 @@ exports.init = function(_SID, CHAN) {
     JLog.success('Master DB is ready.');
 
     MainDB.users.update(['server', SID]).set(['server', '']).on();
-    if (Const.IS_SECURED) {
-      const options = Secure();
-      HTTPS_Server = https.createServer(options)
-        .listen(global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT']);
-      Server = new WebSocket.Server({ server: HTTPS_Server });
-    } else {
-      Server = new WebSocket.Server({
-        port: global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT'],
-        perMessageDeflate: false
-      });
-    }
+    Server = createWebSocketServer();
     Server.on('connection', function(socket, info) {
       var key = info.url.slice(1);
       var $c;

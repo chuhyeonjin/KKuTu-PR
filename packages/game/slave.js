@@ -16,37 +16,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-const HttpsSecureOption = require('kkutu-common/secure');
 const JLog = require('kkutu-common/jjlog');
 const Const = require('kkutu-common/const');
 const MainDB = require('kkutu-common/db');
-const https = require('https');
-const WebSocket = require('ws');
 const File = require('fs');
 const Master = require('./master');
 const KKuTu = require('./kkutu');
+const { createWebSocketServer } = require('./websocket');
 
 const GLOBAL = require('../../config/global.json');
 
-/**
- * @param useSecure {boolean}
- * @returns {WebSocketServer}
- */
-function createServer(useSecure) {
-  if (useSecure) {
-    const HTTPS_Server = https.createServer(HttpsSecureOption())
-      .listen(global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT']);
 
-    return new WebSocket.Server({ server: HTTPS_Server });
-  } else {
-    return new WebSocket.Server({
-      port: global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT'],
-      perMessageDeflate: false
-    });
-  }
-}
-
-const Server = createServer(Const.IS_SECURED);
+const Server = createWebSocketServer();
 
 const DIC = {};
 /**
