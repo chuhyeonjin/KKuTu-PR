@@ -16,36 +16,46 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var WebSocket = require('ws');
-var File = require('fs');
-var Const = require('kkutu-common/const');
-var https = require('https');
-var Secure = require('kkutu-common/secure');
-var Server;
-var HTTPS_Server;
+const HttpsSecureOption = require('kkutu-common/secure');
+const JLog = require('kkutu-common/jjlog');
+const Const = require('kkutu-common/const');
+const MainDB = require('kkutu-common/db');
+const https = require('https');
+const WebSocket = require('ws');
+const File = require('fs');
+const Master = require('./master');
+const KKuTu = require('./kkutu');
 
-if (Const.IS_SECURED) {
-  const options = Secure();
-  HTTPS_Server = https.createServer(options)
-    .listen(global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT']);
-  Server = new WebSocket.Server({ server: HTTPS_Server });
-} else {
-  Server = new WebSocket.Server({
-    port: global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT'],
-    perMessageDeflate: false
-  });
+const GLOBAL = require('../../config/global.json');
+
+/**
+ * @param useSecure {boolean}
+ * @returns {WebSocketServer}
+ */
+function createServer(useSecure) {
+  if (useSecure) {
+    const HTTPS_Server = https.createServer(HttpsSecureOption())
+      .listen(global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT']);
+
+    return new WebSocket.Server({ server: HTTPS_Server });
+  } else {
+    return new WebSocket.Server({
+      port: global.test ? (Const.TEST_PORT + 416) : process.env['KKUTU_PORT'],
+      perMessageDeflate: false
+    });
+  }
 }
-var Master = require('./master');
-var KKuTu = require('./kkutu');
-var Lizard = require('kkutu-common/lizard');
-var MainDB = require('kkutu-common/db');
-var JLog = require('kkutu-common/jjlog');
-var GLOBAL = require('../../config/global.json');
 
-var DIC = {};
-var DNAME = {};
-var ROOM = {};
-var RESERVED = {};
+const Server = createServer(Const.IS_SECURED);
+
+const DIC = {};
+/**
+ * 사용자 이름이 키고, ID가 값인 오브젝트
+ * @type {Record<string, string>}
+ */
+const DNAME = {};
+const ROOM = {};
+const RESERVED = {};
 
 const CHAN = process.env['CHANNEL'];
 const DEVELOP = Master.DEVELOP;
@@ -56,42 +66,43 @@ const MODE_LENGTH = Master.MODE_LENGTH;
 
 JLog.info(`<< KKuTu Server:${Server.options.port} >>`);
 
-process.on('uncaughtException', function(err) {
-  var text = `:${process.env['KKUTU_PORT']} [${new Date().toLocaleString()}] ERROR: ${err.toString()}\n${err.stack}`;
-	
-  for (var i in DIC) {
+process.on('uncaughtException', (err) => {
+  for (const i in DIC) {
     DIC[i].send('dying');
   }
-  File.appendFile('../../KKUTU_ERROR.log', text, function(res) {
-    JLog.error(`ERROR OCCURRED! This worker will die in 10 seconds.`);
-    console.log(text);
-  });
-  setTimeout(function() {
-    process.exit();
-  }, 10000);
+
+  const dateString = new Date().toLocaleString();
+  const port = process.env['KKUTU_PORT'];
+  const text = `:${port} [${dateString}] ERROR: ${err.toString()}\n${err.stack}`;
+
+  File.appendFileSync('../../KKUTU_ERROR.log', text);
+  JLog.error(`ERROR OCCURRED! This worker will die in 10 seconds.`);
+  console.log(text);
+  setTimeout(() => { process.exit(); }, 10000);
 });
-process.on('message', function(msg) {
+
+process.on('message', (msg) => {
   switch (msg.type) {
   case 'invite-error':
     if (!DIC[msg.target]) break;
     DIC[msg.target].sendError(msg.code);
     break;
   case 'room-reserve':
+    // 이미 입장 요청을 했는데 또 하는 경우
     if (RESERVED[msg.session]) {
-      // 이미 입장 요청을 했는데 또 하는 경우
       break;
-    } else {
-      RESERVED[msg.session] = {
-        profile: msg.profile,
-        room: msg.room,
-        spec: msg.spec,
-        pass: msg.pass,
-        _expiration: setTimeout(function(tg, create) {
-          process.send({ type: 'room-expired', id: msg.room.id, create: create });
-          delete RESERVED[tg];
-        }, 10000, msg.session, msg.create)
-      };
     }
+
+    RESERVED[msg.session] = {
+      profile: msg.profile,
+      room: msg.room,
+      spec: msg.spec,
+      pass: msg.pass,
+      _expiration: setTimeout((tg, create) => {
+        process.send({ type: 'room-expired', id: msg.room.id, create: create });
+        delete RESERVED[tg];
+      }, 10000, msg.session, msg.create)
+    };
     break;
   case 'room-invalid':
     delete ROOM[msg.room.id];
@@ -100,25 +111,30 @@ process.on('message', function(msg) {
     JLog.warn(`Unhandled IPC message type: ${msg.type}`);
   }
 });
-MainDB.ready = function() {
+
+MainDB.ready = () => {
   JLog.success('DB is ready.');
   KKuTu.init(MainDB, DIC, ROOM, GUEST_PERMISSION);
 };
-Server.on('connection', function(socket, info) {
-  var chunk = info.url.slice(1).split('&');
-  var key = chunk[0];
-  var reserve = RESERVED[key] || {}; var room;
-  var $c;
-	
-  socket.on('error', function(err) {
-    JLog.warn('Error on #' + key + ' on ws: ' + err.toString());
+
+Server.on('connection', (socket, info) => {
+  const chunk = info.url.slice(1).split('&');
+  const [key, channel] = chunk;
+
+  socket.on('error', (err) => {
+    JLog.warn(`Error on #${key} on ws: ${err.toString()}`);
   });
-  if (CHAN != Number(chunk[1])) {
-    JLog.warn(`Wrong channel value ${chunk[1]} on @${CHAN}`);
+
+  if (CHAN !== channel) {
+    JLog.warn(`Wrong channel value ${channel} on @${CHAN}`);
     socket.close();
     return;
   }
-  if (room = reserve.room) {
+
+  const reserve = RESERVED[key] || {};
+  const room = reserve.room;
+
+  if (room) {
     if (room._create) {
       room._id = room.id;
       delete room.id;
@@ -131,14 +147,26 @@ Server.on('connection', function(socket, info) {
     socket.close();
     return;
   }
-  MainDB.session.findOne(['_id', key]).limit(['profile', true]).on(function($body) {
-    $c = new KKuTu.Client(socket, $body ? $body.profile : null, key);
-    $c.admin = GLOBAL.ADMIN.indexOf($c.id) != -1;
-		
+
+
+  MainDB.session.findOne(['_id', key]).limit(['profile', true]).on(($body) => {
+    const $c = new KKuTu.Client(socket, $body ? $body.profile : null, key);
+    $c.admin = GLOBAL.ADMIN.includes($c.id);
+
     /* Enhanced User Block System [S] */
-    $c.remoteAddress = GLOBAL.USER_BLOCK_OPTIONS.USE_X_FORWARDED_FOR ? info.connection.remoteAddress : (info.headers['x-forwarded-for'] || info.connection.remoteAddress);
-    if (GLOBAL.USER_BLOCK_OPTIONS.USE_MODULE && ((GLOBAL.USER_BLOCK_OPTIONS.BLOCK_IP_ONLY_FOR_GUEST && $c.guest) || !GLOBAL.USER_BLOCK_OPTIONS.BLOCK_IP_ONLY_FOR_GUEST)) {
-      MainDB.ip_block.findOne(['_id', $c.remoteAddress]).on(function($body) {
+    function getRemoteAddress(useXForwardedFor) {
+      return useXForwardedFor ?
+        info.connection.remoteAddress :
+        (info.headers['x-forwarded-for'] || info.connection.remoteAddress);
+    }
+    $c.remoteAddress = getRemoteAddress(GLOBAL.USER_BLOCK_OPTIONS.USE_X_FORWARDED_FOR);
+
+    const isRequireToTestIpBlocked =
+      !GLOBAL.USER_BLOCK_OPTIONS.BLOCK_IP_ONLY_FOR_GUEST ||
+      (GLOBAL.USER_BLOCK_OPTIONS.BLOCK_IP_ONLY_FOR_GUEST && $c.guest);
+
+    if (GLOBAL.USER_BLOCK_OPTIONS.USE_MODULE && isRequireToTestIpBlocked) {
+      MainDB.ip_block.findOne(['_id', $c.remoteAddress]).on(($body) => {
         if ($body.reasonBlocked) {
           $c.socket.send(JSON.stringify({
             type: 'error',
@@ -147,275 +175,401 @@ Server.on('connection', function(socket, info) {
             ipBlockedUntil: !$body.ipBlockedUntil ? GLOBAL.USER_BLOCK_OPTIONS.BLOCKED_FOREVER : $body.ipBlockedUntil
           }));
           $c.socket.close();
-          return;
         }
       });
     }
     /* Enhanced User Block System [E] */
+
     if (DIC[$c.id]) {
       DIC[$c.id].send('error', { code: 408 });
       DIC[$c.id].socket.close();
     }
+
     if (DEVELOP && !Const.TESTER.includes($c.id)) {
       $c.send('error', { code: 500 });
       $c.socket.close();
       return;
     }
-    $c.refresh().then(function(ref) {
-      if (ref.result == 200) {
-        DIC[$c.id] = $c;
-        DNAME[($c.profile.title || $c.profile.name).replace(/\s/g, '')] = $c.id;
-				
-        $c.enter(room, reserve.spec, reserve.pass);
-        if ($c.place == room.id) {
-          $c.publish('connRoom', { user: $c.getData() });
-        } else { // 입장 실패
-          $c.socket.close();
-        }
-        JLog.info(`Chan @${CHAN} New #${$c.id}`);
-      } else {
+
+    $c.refresh().then((ref) => {
+      if (ref.result !== 200) {
         $c.send('error', {
           code: ref.result, message: ref.black
         });
         $c._error = ref.result;
         $c.socket.close();
+        return;
       }
+
+      DIC[$c.id] = $c;
+      DNAME[($c.profile.title || $c.profile.name).replace(/\s/g, '')] = $c.id;
+
+      $c.enter(room, reserve.spec, reserve.pass);
+      if ($c.place == room.id) {
+        $c.publish('connRoom', { user: $c.getData() });
+      } else { // 입장 실패
+        $c.socket.close();
+      }
+      JLog.info(`Chan @${CHAN} New #${$c.id}`);
     });
   });
 });
-Server.on('error', function(err) {
-  JLog.warn('Error on ws: ' + err.toString());
-});
-KKuTu.onClientMessage = function($c, msg) {
-  var stable = true;
-  var temp;
-  var now = (new Date()).getTime();
-	
-  if (!msg) return;
-	
-  switch (msg.type) {
-  case 'yell':
-    if (!msg.value) return;
-    if (!$c.admin) return;
-			
-    $c.publish('yell', { value: msg.value });
-    break;
-  case 'refresh':
-    $c.refresh();
-    break;
-  case 'talk':
-    if (!msg.value) return;
-    if (!msg.value.substr) return;
-    if (!GUEST_PERMISSION.talk) {
-      if ($c.guest) {
-        $c.send('error', { code: 401 });
-        return;
-      }
+
+Server.on('error', (err) => { JLog.warn(`Error on ws: ${err.toString()}`); });
+
+KKuTu.onClientClosed = (client) => {
+  delete DIC[client.id];
+
+  if (client.profile) delete DNAME[client.profile.title || client.profile.name];
+  if (client.socket) client.socket.removeAllListeners();
+  KKuTu.publish('disconnRoom', { id: client.id });
+
+  JLog.alert(`Chan @${CHAN} Exit #${client.id}`);
+};
+
+function onClientYell(client, { value }) {
+  if (!value) return;
+  if (!client.admin) return;
+
+  client.publish('yell', { value });
+}
+
+function onClientTalk(client, msg) {
+  const { value, relay: isRelay, data, whisper } = msg;
+
+  if (!value || typeof value !== 'string') return;
+
+  if (!GUEST_PERMISSION.talk && client.guest) {
+    client.send('error', { code: 401 });
+    return;
+  }
+
+  const slicedValue = value.slice(0, 200);
+  msg.value = slicedValue;
+
+  function getCurrentRoom(client) {
+    if (client.subPlace) return client.pracRoom;
+    return ROOM[client.place];
+  }
+
+  if (isRelay) {
+    const currentRoom = getCurrentRoom(client);
+    if (!currentRoom || !currentRoom.gaming) return;
+
+    if (currentRoom.game.late) {
+      client.chat(slicedValue);
+      return;
     }
-    msg.value = msg.value.substr(0, 200);
-    if (msg.relay) {
-      if ($c.subPlace) temp = $c.pracRoom;
-      else if (!(temp = ROOM[$c.place])) return;
-      if (!temp.gaming) return;
-      if (temp.game.late) {
-        $c.chat(msg.value);
-      } else if (!temp.game.loading) {
-        temp.submit($c, msg.value, msg.data);
-      }
-    } else {
-      if ($c.admin) {
-        if (msg.value.charAt() == '#') {
-          process.send({ type: 'admin', id: $c.id, value: msg.value });
-          break;
-        }
-      }
-      if (msg.whisper) {
-        process.send({ type: 'tail-report', id: $c.id, chan: CHAN, place: $c.place, msg: msg });
-        msg.whisper.split(',').forEach((v) => {
-          if (temp = DIC[DNAME[v]]) {
-            temp.send('chat', { from: $c.profile.title || $c.profile.name, profile: $c.profile, value: msg.value });
-          } else {
-            $c.sendError(424, v);
-          }
+
+    if (!currentRoom.game.loading) {
+      currentRoom.submit(client, slicedValue, data);
+    }
+
+    return;
+  }
+
+  if (client.admin && slicedValue.startsWith('#')) {
+    process.send({ type: 'admin', id: client.id, value: slicedValue });
+    return;
+  }
+
+  if (whisper) {
+    process.send({ type: 'tail-report', id: client.id, chan: CHAN, place: client.place, msg });
+    whisper.split(',').forEach((v) => {
+      const target = DIC[DNAME[v]];
+      if (target) {
+        target.send('chat', {
+          from: client.profile.title || client.profile.name,
+          profile: client.profile,
+          value: slicedValue
         });
       } else {
-        $c.chat(msg.value);
+        client.sendError(424, v);
       }
+    });
+    return;
+  }
+
+  client.chat(slicedValue);
+}
+
+/**
+ * onClientMessage 에서 메세지 타입이 setRoom 이거나 Enter 일때 메시지의 값들을 검사합니다.
+ * 이름과 달리 msg 를 검사하는것 뿐만 아니라 msg 의 값을 수정합니다.
+ *
+ * @returns {boolean} isMessageStable
+ */
+function checkRoomMessageStable(msg) {
+  let isMessageStable = true;
+
+  msg.code = false;
+
+  if (!msg.title || !msg.opts) isMessageStable = false;
+
+  msg.limit = Number(msg.limit);
+  msg.mode = Number(msg.mode);
+  msg.round = Number(msg.round);
+  msg.time = Number(msg.time);
+
+  if (isNaN(msg.mode)) isMessageStable = false;
+  if (!msg.limit) isMessageStable = false;
+  if (!msg.round) isMessageStable = false;
+  if (!msg.time) isMessageStable = false;
+
+  if (isMessageStable) {
+    if (msg.title.length > 20) isMessageStable = false;
+    if (msg.password.length > 20) isMessageStable = false;
+    if (msg.limit < 2 || msg.limit > 8) {
+      msg.code = 432;
+      isMessageStable = false;
     }
+    if (msg.mode < 0 || msg.mode >= MODE_LENGTH) isMessageStable = false;
+    if (msg.round < 1 || msg.round > 10) {
+      msg.code = 433;
+      isMessageStable = false;
+    }
+    if (!ENABLE_ROUND_TIME.includes(msg.time)) isMessageStable = false;
+  }
+
+  return isMessageStable;
+}
+
+function onClientSetRoom(client, msg) {
+  const isMessageStable = checkRoomMessageStable(msg);
+
+  if (!isMessageStable) {
+    client.sendError(msg.code || 431);
+    return;
+  }
+
+  client.setRoom(msg);
+}
+
+function onClientEnter(client, msg) {
+  const isMessageStable = checkRoomMessageStable(msg);
+
+  if (msg.id || isMessageStable) client.enter(msg, msg.spectate);
+  else client.sendError(msg.code || 431);
+}
+
+function onClientStart(client) {
+  if (!client.place) return;
+  if (!ROOM[client.place]) return;
+  if (ROOM[client.place].gaming) return;
+  if (!GUEST_PERMISSION.start && client.guest) return;
+
+  client.start();
+}
+
+function isRobotLevelValid(level, ruleHasAI) {
+  if (ruleHasAI) {
+    if (level < 0 || level >= 5) return false;
+  } else {
+    if (level !== -1) return false;
+  }
+
+  return true;
+}
+
+function onClientPractice(client, msg) {
+  const currentRoom = ROOM[client.place];
+  if (!currentRoom) return;
+  if (currentRoom.gaming) return;
+  if (!GUEST_PERMISSION.practice && client.guest) return;
+
+  msg.level = Number(msg.level);
+  if (isNaN(msg.level)) return;
+  if (!isRobotLevelValid(msg.level, currentRoom.rule.ai)) return;
+
+  client.practice(msg.level);
+}
+
+function onClientInvite(client, msg) {
+  const currentRoom = ROOM[client.place];
+
+  if (!currentRoom) return;
+  if (currentRoom.gaming) return;
+  if (currentRoom.master !== client.id) return;
+  if (!GUEST_PERMISSION.invite && client.guest) return;
+
+  if (msg.target === 'AI') {
+    currentRoom.addAI(client);
+  } else {
+    process.send({ type: 'invite', id: client.id, place: client.place, target: msg.target });
+  }
+}
+
+function onClientInviteRes(client, msg) {
+  const inviteFrom = ROOM[msg.from];
+  if (!inviteFrom) return;
+  if (!GUEST_PERMISSION.inviteRes && client.guest) return;
+
+  if (msg.res) {
+    client.enter({ id: msg.from }, false, true);
+  } else {
+    if (DIC[inviteFrom.master]) DIC[inviteFrom.master].send('inviteNo', { target: client.id });
+  }
+}
+
+function onClientTeam(client, msg) {
+  const currentRoom = ROOM[client.place];
+
+  if (!currentRoom) return;
+  if (currentRoom.gaming) return;
+  if (client.ready) return;
+
+  const team = Number(msg.value);
+  if (isNaN(team)) return;
+  if (team < 0 || team > 4) return;
+
+  client.setTeam(Math.round(team));
+}
+
+function onClientKick(client, msg) {
+  const currentRoom = ROOM[client.place];
+
+  if (currentRoom.master !== client.id) return;
+  if (!GUEST_PERMISSION.kick && client.guest) return;
+
+  if (!currentRoom) return;
+  if (currentRoom.gaming) return;
+  if (currentRoom.kickVote) return;
+
+  if (msg.robot) {
+    client.kick(null, msg.target);
+    return;
+  }
+
+  const target = DIC[msg.target];
+
+  if (!target) return;
+  if (client.place !== target.place) return;
+
+  client.kick(msg.target);
+}
+
+function onClientKickVote(client, msg) {
+  const currentRoom = ROOM[client.place];
+  if (!currentRoom) return;
+  if (!currentRoom.kickVote) return;
+
+  if (client.id === currentRoom.kickVote.target) return;
+  if (client.id === currentRoom.master) return;
+  if (currentRoom.kickVote.list.includes(client.id)) return;
+  if (!GUEST_PERMISSION.kickVote && client.guest) return;
+
+  client.kickVote(client, msg.agree);
+}
+
+function onClientHandover(client, msg) {
+  if (!DIC[msg.target]) return;
+  if (client.place !== DIC[msg.target].place) return;
+
+  const currentRoom = ROOM[client.place];
+  if (!currentRoom) return;
+  if (currentRoom.gaming) return;
+  if (currentRoom.master !== client.id) return;
+
+  currentRoom.master = msg.target;
+  currentRoom.export();
+}
+
+function onClientWp(client, msg) {
+  if (!msg.value) return;
+  if (!GUEST_PERMISSION.wp && client.guest) {
+    client.send('error', { code: 401 });
+    return;
+  }
+
+  msg.value = msg.value.slice(0, 200);
+  msg.value = msg.value.replace(/[^a-z가-힣]/g, '');
+  if (msg.value.length < 2) return;
+}
+
+function onClientSetAI(client, msg) {
+  if (!msg.target) return;
+
+  const currentRoom = ROOM[client.place];
+  if (!currentRoom) return;
+  if (currentRoom.gaming) return;
+  if (currentRoom.master !== client.id) return;
+
+  msg.level = Number(msg.level);
+  if (isNaN(msg.level)) return;
+  if (msg.level < 0 || msg.level >= 5) return;
+
+  msg.team = Number(msg.team);
+  if (isNaN(msg.team)) return;
+  if (msg.team < 0 || msg.team > 4) return;
+
+  currentRoom.setAI(msg.target, Math.round(msg.level), Math.round(msg.team));
+}
+
+KKuTu.onClientMessage = (client, msg) => {
+  if (!msg) return;
+
+  switch (msg.type) {
+  case 'yell':
+    onClientYell(client, msg);
+    break;
+  case 'refresh':
+    client.refresh();
+    break;
+  case 'talk':
+    onClientTalk(client, msg);
     break;
   case 'enter':
+    onClientEnter(client, msg);
+    break;
   case 'setRoom':
-    if (!msg.title) stable = false;
-    if (!msg.limit) stable = false;
-    if (!msg.round) stable = false;
-    if (!msg.time) stable = false;
-    if (!msg.opts) stable = false;
-			
-    msg.code = false;
-    msg.limit = Number(msg.limit);
-    msg.mode = Number(msg.mode);
-    msg.round = Number(msg.round);
-    msg.time = Number(msg.time);
-			
-    if (isNaN(msg.limit)) stable = false;
-    if (isNaN(msg.mode)) stable = false;
-    if (isNaN(msg.round)) stable = false;
-    if (isNaN(msg.time)) stable = false;
-			
-    if (stable) {
-      if (msg.title.length > 20) stable = false;
-      if (msg.password.length > 20) stable = false;
-      if (msg.limit < 2 || msg.limit > 8) {
-        msg.code = 432;
-        stable = false;
-      }
-      if (msg.mode < 0 || msg.mode >= MODE_LENGTH) stable = false;
-      if (msg.round < 1 || msg.round > 10) {
-        msg.code = 433;
-        stable = false;
-      }
-      if (ENABLE_ROUND_TIME.indexOf(msg.time) == -1) stable = false;
-    }
-    if (msg.type == 'enter') {
-      if (msg.id || stable) $c.enter(msg, msg.spectate);
-      else $c.sendError(msg.code || 431);
-    } else if (msg.type == 'setRoom') {
-      if (stable) $c.setRoom(msg);
-      else $c.sendError(msg.code || 431);
-    }
+    onClientSetRoom(client, msg);
     break;
   case 'leave':
-    if (!$c.place) return;
-			
-    $c.leave();
+    if (!client.place) return;
+    client.leave();
     break;
   case 'ready':
-    if (!$c.place) return;
-    if (!GUEST_PERMISSION.ready) if ($c.guest) return;
-			
-    $c.toggle();
+    if (!client.place) return;
+    if (!GUEST_PERMISSION.ready && client.guest) return;
+    client.toggle();
     break;
   case 'start':
-    if (!$c.place) return;
-    if (!ROOM[$c.place]) return;
-    if (ROOM[$c.place].gaming) return;
-    if (!GUEST_PERMISSION.start) if ($c.guest) return;
-			
-    $c.start();
+    onClientStart(client);
     break;
   case 'practice':
-    if (!ROOM[$c.place]) return;
-    if (ROOM[$c.place].gaming) return;
-    if (!GUEST_PERMISSION.practice) if ($c.guest) return;
-    if (isNaN(msg.level = Number(msg.level))) return;
-    if (ROOM[$c.place].rule.ai) {
-      if (msg.level < 0 || msg.level >= 5) return;
-    } else if (msg.level != -1) return;
-			
-    $c.practice(msg.level);
+    onClientPractice(client, msg);
     break;
   case 'invite':
-    if (!ROOM[$c.place]) return;
-    if (ROOM[$c.place].gaming) return;
-    if (ROOM[$c.place].master != $c.id) return;
-    if (!GUEST_PERMISSION.invite) if ($c.guest) return;
-    if (msg.target == 'AI') {
-      ROOM[$c.place].addAI($c);
-    } else {
-      process.send({ type: 'invite', id: $c.id, place: $c.place, target: msg.target });
-    }
+    onClientInvite(client, msg);
     break;
   case 'inviteRes':
-    if (!(temp = ROOM[msg.from])) return;
-    if (!GUEST_PERMISSION.inviteRes) if ($c.guest) return;
-    if (msg.res) {
-      $c.enter({ id: msg.from }, false, true);
-    } else {
-      if (DIC[temp.master]) DIC[temp.master].send('inviteNo', { target: $c.id });
-    }
+    onClientInviteRes(client, msg);
     break;
   case 'form':
     if (!msg.mode) return;
-    if (!ROOM[$c.place]) return;
-    if (ENABLE_FORM.indexOf(msg.mode) == -1) return;
-			
-    $c.setForm(msg.mode);
+    if (!ROOM[client.place]) return;
+    if (!ENABLE_FORM.includes(msg.mode)) return;
+    client.setForm(msg.mode);
     break;
   case 'team':
-    if (!ROOM[$c.place]) return;
-    if (ROOM[$c.place].gaming) return;
-    if ($c.ready) return;
-    if (isNaN(temp = Number(msg.value))) return;
-    if (temp < 0 || temp > 4) return;
-			
-    $c.setTeam(Math.round(temp));
+    onClientTeam(client, msg);
     break;
   case 'kick':
-    if (!msg.robot) if (!(temp = DIC[msg.target])) return;
-    if (!ROOM[$c.place]) return;
-    if (ROOM[$c.place].gaming) return;
-    if (!msg.robot) if ($c.place != temp.place) return;
-    if (ROOM[$c.place].master != $c.id) return;
-    if (ROOM[$c.place].kickVote) return;
-    if (!GUEST_PERMISSION.kick) if ($c.guest) return;
-			
-    if (msg.robot) $c.kick(null, msg.target);
-    else $c.kick(msg.target);
+    onClientKick(client, msg);
     break;
   case 'kickVote':
-    if (!(temp = ROOM[$c.place])) return;
-    if (!temp.kickVote) return;
-    if ($c.id == temp.kickVote.target) return;
-    if ($c.id == temp.master) return;
-    if (temp.kickVote.list.indexOf($c.id) != -1) return;
-    if (!GUEST_PERMISSION.kickVote) if ($c.guest) return;
-			
-    $c.kickVote($c, msg.agree);
+    onClientKickVote(client, msg);
     break;
   case 'handover':
-    if (!DIC[msg.target]) return;
-    if (!(temp = ROOM[$c.place])) return;
-    if (temp.gaming) return;
-    if ($c.place != DIC[msg.target].place) return;
-    if (temp.master != $c.id) return;
-			
-    temp.master = msg.target;
-    temp.export();
+    onClientHandover(client, msg);
     break;
   case 'wp':
-    if (!msg.value) return;
-    if (!GUEST_PERMISSION.wp) {
-      if ($c.guest) {
-        $c.send('error', { code: 401 });
-        return;
-      }
-    }
-			
-    msg.value = msg.value.substr(0, 200);
-    msg.value = msg.value.replace(/[^a-z가-힣]/g, '');
-    if (msg.value.length < 2) return;
+    onClientWp(client, msg);
     break;
   case 'setAI':
-    if (!msg.target) return;
-    if (!ROOM[$c.place]) return;
-    if (ROOM[$c.place].gaming) return;
-    if (ROOM[$c.place].master != $c.id) return;
-    if (isNaN(msg.level = Number(msg.level))) return;
-    if (msg.level < 0 || msg.level >= 5) return;
-    if (isNaN(msg.team = Number(msg.team))) return;
-    if (msg.team < 0 || msg.team > 4) return;
-			
-    ROOM[$c.place].setAI(msg.target, Math.round(msg.level), Math.round(msg.team));
+    onClientSetAI(client, msg);
     break;
   default:
     break;
   }
-};
-KKuTu.onClientClosed = function($c, code) {
-  delete DIC[$c.id];
-  if ($c.profile) delete DNAME[$c.profile.title || $c.profile.name];
-  if ($c.socket) $c.socket.removeAllListeners();
-  KKuTu.publish('disconnRoom', { id: $c.id });
-
-  JLog.alert(`Chan @${CHAN} Exit #${$c.id}`);
 };
