@@ -20,7 +20,6 @@ const JLog = require('kkutu-common/jjlog');
 const Const = require('kkutu-common/const');
 const MainDB = require('kkutu-common/db');
 const File = require('fs');
-const Master = require('./master');
 const KKuTu = require('./kkutu');
 const { createWebSocketServer } = require('./websocket');
 
@@ -39,11 +38,11 @@ const ROOM = {};
 const RESERVED = {};
 
 const CHAN = process.env['CHANNEL'];
-const DEVELOP = Master.DEVELOP;
-const GUEST_PERMISSION = Master.GUEST_PERMISSION;
-const ENABLE_ROUND_TIME = Master.ENABLE_ROUND_TIME;
-const ENABLE_FORM = Master.ENABLE_FORM;
-const MODE_LENGTH = Master.MODE_LENGTH;
+const DEVELOP = global.test || false;
+const GUEST_PERMISSION = Const.GUEST_PERMISSION;
+const ENABLED_ROUND_TIME = Const.ENABLED_ROUND_TIME;
+const ENABLED_FORM = Const.ENABLED_FORM;
+const MODE_LENGTH = Const.MODE_LENGTH;
 
 JLog.info(`<< KKuTu Server:${Server.options.port} >>`);
 
@@ -309,7 +308,7 @@ function checkRoomMessageStable(msg) {
       msg.code = 433;
       isMessageStable = false;
     }
-    if (!ENABLE_ROUND_TIME.includes(msg.time)) isMessageStable = false;
+    if (!ENABLED_ROUND_TIME.includes(msg.time)) isMessageStable = false;
   }
 
   return isMessageStable;
@@ -529,7 +528,7 @@ KKuTu.onClientMessage = (client, msg) => {
   case 'form':
     if (!msg.mode) return;
     if (!ROOM[client.place]) return;
-    if (!ENABLE_FORM.includes(msg.mode)) return;
+    if (!ENABLED_FORM.includes(msg.mode)) return;
     client.setForm(msg.mode);
     break;
   case 'team':

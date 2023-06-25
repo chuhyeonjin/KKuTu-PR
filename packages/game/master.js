@@ -39,23 +39,10 @@ var T_USER = {};
 var SID;
 var WDIC = {};
 
-const DEVELOP = exports.DEVELOP = global.test || false;
-const GUEST_PERMISSION = exports.GUEST_PERMISSION = {
-  create: true,
-  enter: true,
-  talk: true,
-  practice: true,
-  ready: true,
-  start: true,
-  invite: true,
-  inviteRes: true,
-  kick: true,
-  kickVote: true,
-  wp: true
-};
-const ENABLE_ROUND_TIME = exports.ENABLE_ROUND_TIME = [10, 30, 60, 90, 120, 150];
-const ENABLE_FORM = exports.ENABLE_FORM = ['S', 'J'];
-const MODE_LENGTH = exports.MODE_LENGTH = Const.GAME_TYPE.length;
+const DEVELOP = global.test || false;
+const GUEST_PERMISSION = Const.GUEST_PERMISSION;
+const ENABLED_ROUND_TIME = Const.ENABLED_ROUND_TIME;
+const MODE_LENGTH = Const.MODE_LENGTH;
 const PORT = process.env['KKUTU_PORT'];
 
 process.on('uncaughtException', function(err) {
@@ -487,7 +474,7 @@ function processClientRequest($c, msg) {
         msg.code = 433;
         stable = false;
       }
-      if (ENABLE_ROUND_TIME.indexOf(msg.time) == -1) stable = false;
+      if (ENABLED_ROUND_TIME.indexOf(msg.time) == -1) stable = false;
     }
     if (msg.type == 'enter') {
       if (msg.id || stable) $c.enter(msg, msg.spectate);
@@ -672,9 +659,7 @@ exports.init = function(_SID, CHAN) {
         });
       });
     });
-    Server.on('error', function(err) {
-      JLog.warn('Error on ws: ' + err.toString());
-    });
+    Server.on('error', (err) => { JLog.warn(`Error on ws: ${err.toString()}`); });
     KKuTu.init(MainDB, DIC, ROOM, GUEST_PERMISSION, CHAN);
   };
 };

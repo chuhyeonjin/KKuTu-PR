@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var GLOBAL = require('../../config/global.json');
+const GLOBAL = require('../../config/global.json');
  
 exports.KKUTU_MAX = 400;
 exports.MAIN_PORTS = GLOBAL.MAIN_PORTS;
@@ -191,6 +191,7 @@ exports.getPenalty = function(chain, score) {
   return -1 * Math.round(Math.min(10 + (chain || []).length * 2.1 + score * 0.15, score));
 };
 exports.GAME_TYPE = Object.keys(exports.RULE);
+exports.MODE_LENGTH = exports.GAME_TYPE.length;
 exports.EXAMPLE_TITLE = {
   ko: '가나다라마바사아자차',
   en: 'abcdefghij'
@@ -252,3 +253,18 @@ exports.WP_REWARD = function() {
 exports.getRule = function(mode) {
   return exports.RULE[exports.GAME_TYPE[mode]];
 };
+exports.GUEST_PERMISSION = {
+  create: true,
+  enter: true,
+  talk: true,
+  practice: true,
+  ready: true,
+  start: true,
+  invite: true,
+  inviteRes: true,
+  kick: true,
+  kickVote: true,
+  wp: true
+};
+exports.ENABLED_ROUND_TIME = [10, 30, 60, 90, 120, 150];
+exports.ENABLED_FORM = ['S', 'J'];
