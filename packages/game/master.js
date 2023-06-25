@@ -45,14 +45,15 @@ const ENABLED_ROUND_TIME = Const.ENABLED_ROUND_TIME;
 const MODE_LENGTH = Const.MODE_LENGTH;
 const PORT = process.env['KKUTU_PORT'];
 
-process.on('uncaughtException', function(err) {
-  var text = `:${PORT} [${new Date().toLocaleString()}] ERROR: ${err.toString()}\n${err.stack}\n`;
-	
-  File.appendFile('/jjolol/KKUTU_ERROR.log', text, function(res) {
-    JLog.error(`ERROR OCCURRED ON THE MASTER!`);
-    console.log(text);
-  });
+process.on('uncaughtException', (err) => {
+  const dateString = new Date().toLocaleString();
+  const text = `:${PORT} [${dateString}] ERROR: ${err.toString()}\n${err.stack}\n`;
+
+  File.appendFileSync('/jjolol/KKUTU_ERROR.log', text);
+  JLog.error(`ERROR OCCURRED ON THE MASTER!`);
+  console.log(text);
 });
+
 function processAdmin(id, value) {
   var cmd; var temp; var i; var j;
 	
@@ -341,102 +342,206 @@ KKuTu.onClientMessage = function($c, msg) {
 	
   if ($c.passRecaptcha) {
     processClientRequest($c, msg);
-  } else {
-    if (msg.type === 'recaptcha') {
-      Recaptcha.verifyRecaptcha(msg.token, $c.remoteAddress, function(success) {
-        if (success) {
-          $c.passRecaptcha = true;
+    return;
+  }
 
-          joinNewUser($c);
+  if (msg.type === 'recaptcha') {
+    Recaptcha.verifyRecaptcha(msg.token, $c.remoteAddress, function(success) {
+      if (success) {
+        $c.passRecaptcha = true;
 
-          processClientRequest($c, msg);
-        } else {
-          JLog.warn(`Recaptcha failed from IP ${$c.remoteAddress}`);
+        joinNewUser($c);
 
-          $c.sendError(447);
-          $c.socket.close();
-        }
-      });
-    }
+        processClientRequest($c, msg);
+      } else {
+        JLog.warn(`Recaptcha failed from IP ${$c.remoteAddress}`);
+
+        $c.sendError(447);
+        $c.socket.close();
+      }
+    });
   }
 };
 
+function onClientYell(client, { value }) {
+  if (!value) return;
+  if (!client.admin) return;
+
+  client.publish('yell', { value });
+}
+
+function onClientTalk(client, msg) {
+  const { value, whisper } = msg;
+
+  if (!value || typeof value !== 'string') return;
+
+  if (!GUEST_PERMISSION.talk && client.guest) {
+    client.send('error', { code: 401 });
+    return;
+  }
+
+  const slicedValue = value.slice(0, 200);
+  msg.value = slicedValue;
+
+  if (client.admin && !processAdmin(client.id, slicedValue)) return;
+
+  checkTailUser(client.id, client.place, msg);
+
+  if (whisper) {
+    whisper.split(',').forEach((v) => {
+      const target = DIC[DNAME[v]];
+      if (!target) {
+        client.sendError(424, v);
+        return;
+      }
+
+      target.send('chat', {
+        from: client.profile.title || client.profile.name,
+        profile: client.profile,
+        value: slicedValue
+      });
+    });
+    return;
+  }
+
+  client.chat(msg.value);
+}
+
+function onClientFriendAdd(client, { target: targetId }) {
+  if (!targetId) return;
+  if (client.guest) return;
+  if (client.id === targetId) return;
+
+  if (Object.keys(client.friends).length >= 100) return client.sendError(452);
+
+  const targetUser = DIC[targetId];
+  if (!targetUser) {
+    client.sendError(450);
+    return;
+  }
+
+  if (targetUser.guest) return client.sendError(453);
+  if (client._friend) return client.sendError(454);
+
+  client._friend = targetUser.id;
+  targetUser.send('friendAdd', { from: client.id });
+}
+
+function onClientFriendAddRes(client, { from: fromId, res }) {
+  const fromUser = DIC[fromId];
+  if (!fromUser) return;
+  if (fromUser._friend !== client.id) return;
+
+  if (res) {
+    // client 와 fromUser 가 친구가 되었다.
+    client.addFriend(fromUser.id);
+    fromUser.addFriend(client.id);
+  }
+  fromUser.send('friendAddRes', { target: client.id, res });
+  delete fromUser._friend;
+}
+
+function onClientFriendEdit(client, { id: friendId, memo }) {
+  if (!client.friends) return;
+  if (!client.friends[friendId]) return;
+
+  client.friends[friendId] = (memo || '').slice(0, 50);
+  client.flush(false, false, true);
+  client.send('friendEdit', { friends: client.friends });
+}
+
+/**
+ * onClientMessage 에서 메세지 타입이 setRoom 이거나 Enter 일때 메시지의 값들을 검사합니다.
+ * 이름과 달리 msg 를 검사하는것 뿐만 아니라 msg 의 값을 수정합니다.
+ *
+ * @returns {boolean} isMessageStable
+ */
+function checkRoomMessageStable(msg) {
+  let isMessageStable = true;
+
+  msg.code = false;
+
+  if (!msg.title || !msg.opts) isMessageStable = false;
+
+  msg.limit = Number(msg.limit);
+  msg.mode = Number(msg.mode);
+  msg.round = Number(msg.round);
+  msg.time = Number(msg.time);
+
+  if (isNaN(msg.mode)) isMessageStable = false;
+  if (!msg.limit) isMessageStable = false;
+  if (!msg.round) isMessageStable = false;
+  if (!msg.time) isMessageStable = false;
+
+  if (isMessageStable) {
+    if (msg.title.length > 20) isMessageStable = false;
+    if (msg.password.length > 20) isMessageStable = false;
+    if (msg.limit < 2 || msg.limit > 8) {
+      msg.code = 432;
+      isMessageStable = false;
+    }
+    if (msg.mode < 0 || msg.mode >= MODE_LENGTH) isMessageStable = false;
+    if (msg.round < 1 || msg.round > 10) {
+      msg.code = 433;
+      isMessageStable = false;
+    }
+    if (!ENABLED_ROUND_TIME.includes(msg.time)) isMessageStable = false;
+  }
+
+  return isMessageStable;
+}
+
+function onClientEnter(client, msg) {
+  const isMessageStable = checkRoomMessageStable(msg);
+
+  if (msg.id || isMessageStable) client.enter(msg, msg.spectate);
+  else client.sendError(msg.code || 431);
+}
+
+function onClientSetRoom(client, msg) {
+  const isMessageStable = checkRoomMessageStable(msg);
+
+  if (!isMessageStable) {
+    client.sendError(msg.code || 431);
+    return;
+  }
+
+  client.setRoom(msg);
+}
+
+function onClientInviteRes(client, msg) {
+  const inviteFrom = ROOM[msg.from];
+  if (!inviteFrom) return;
+  if (!GUEST_PERMISSION.inviteRes && client.guest) return;
+  if (client._invited !== msg.from) return;
+
+  if (msg.res) {
+    client.enter({ id: client._invited }, false, true);
+  } else {
+    if (DIC[inviteFrom.master]) DIC[inviteFrom.master].send('inviteNo', { target: client.id });
+  }
+  delete client._invited;
+}
+
 function processClientRequest($c, msg) {
-  var stable = true;
-  var temp;
-  var now = (new Date()).getTime();
-	
   switch (msg.type) {
   case 'yell':
-    if (!msg.value) return;
-    if (!$c.admin) return;
-
-    $c.publish('yell', { value: msg.value });
+    onClientYell($c, msg);
     break;
   case 'refresh':
     $c.refresh();
     break;
   case 'talk':
-    if (!msg.value) return;
-    if (!msg.value.substr) return;
-    if (!GUEST_PERMISSION.talk) {
-      if ($c.guest) {
-        $c.send('error', { code: 401 });
-        return;
-      }
-    }
-    msg.value = msg.value.substr(0, 200);
-    if ($c.admin) {
-      if (!processAdmin($c.id, msg.value)) break;
-    }
-    checkTailUser($c.id, $c.place, msg);
-    if (msg.whisper) {
-      msg.whisper.split(',').forEach((v) => {
-        if (temp = DIC[DNAME[v]]) {
-          temp.send('chat', {
-            from: $c.profile.title || $c.profile.name,
-            profile: $c.profile,
-            value: msg.value
-          });
-        } else {
-          $c.sendError(424, v);
-        }
-      });
-    } else {
-      $c.chat(msg.value);
-    }
+    onClientTalk($c, msg);
     break;
   case 'friendAdd':
-    if (!msg.target) return;
-    if ($c.guest) return;
-    if ($c.id == msg.target) return;
-    if (Object.keys($c.friends).length >= 100) return $c.sendError(452);
-    if (temp = DIC[msg.target]) {
-      if (temp.guest) return $c.sendError(453);
-      if ($c._friend) return $c.sendError(454);
-      $c._friend = temp.id;
-      temp.send('friendAdd', { from: $c.id });
-    } else {
-      $c.sendError(450);
-    }
+    onClientFriendAdd($c, msg);
     break;
   case 'friendAddRes':
-    if (!(temp = DIC[msg.from])) return;
-    if (temp._friend != $c.id) return;
-    if (msg.res) {
-      // $c와 temp가 친구가 되었다.
-      $c.addFriend(temp.id);
-      temp.addFriend($c.id);
-    }
-    temp.send('friendAddRes', { target: $c.id, res: msg.res });
-    delete temp._friend;
+    onClientFriendAddRes($c, msg);
     break;
   case 'friendEdit':
-    if (!$c.friends) return;
-    if (!$c.friends[msg.id]) return;
-    $c.friends[msg.id] = (msg.memo || '').slice(0, 50);
-    $c.flush(false, false, true);
-    $c.send('friendEdit', { friends: $c.friends });
+    onClientFriendEdit($c, msg);
     break;
   case 'friendRemove':
     if (!$c.friends) return;
@@ -444,68 +549,14 @@ function processClientRequest($c, msg) {
     $c.removeFriend(msg.id);
     break;
   case 'enter':
+    onClientEnter($c, msg);
+    break;
   case 'setRoom':
-    if (!msg.title) stable = false;
-    if (!msg.limit) stable = false;
-    if (!msg.round) stable = false;
-    if (!msg.time) stable = false;
-    if (!msg.opts) stable = false;
-
-    msg.code = false;
-    msg.limit = Number(msg.limit);
-    msg.mode = Number(msg.mode);
-    msg.round = Number(msg.round);
-    msg.time = Number(msg.time);
-
-    if (isNaN(msg.limit)) stable = false;
-    if (isNaN(msg.mode)) stable = false;
-    if (isNaN(msg.round)) stable = false;
-    if (isNaN(msg.time)) stable = false;
-
-    if (stable) {
-      if (msg.title.length > 20) stable = false;
-      if (msg.password.length > 20) stable = false;
-      if (msg.limit < 2 || msg.limit > 8) {
-        msg.code = 432;
-        stable = false;
-      }
-      if (msg.mode < 0 || msg.mode >= MODE_LENGTH) stable = false;
-      if (msg.round < 1 || msg.round > 10) {
-        msg.code = 433;
-        stable = false;
-      }
-      if (ENABLED_ROUND_TIME.indexOf(msg.time) == -1) stable = false;
-    }
-    if (msg.type == 'enter') {
-      if (msg.id || stable) $c.enter(msg, msg.spectate);
-      else $c.sendError(msg.code || 431);
-    } else if (msg.type == 'setRoom') {
-      if (stable) $c.setRoom(msg);
-      else $c.sendError(msg.code || 431);
-    }
+    onClientSetRoom($c, msg);
     break;
   case 'inviteRes':
-    if (!(temp = ROOM[msg.from])) return;
-    if (!GUEST_PERMISSION.inviteRes) if ($c.guest) return;
-    if ($c._invited != msg.from) return;
-    if (msg.res) {
-      $c.enter({ id: $c._invited }, false, true);
-    } else {
-      if (DIC[temp.master]) DIC[temp.master].send('inviteNo', { target: $c.id });
-    }
-    delete $c._invited;
+    onClientInviteRes($c, msg);
     break;
-    /* 망할 셧다운제
-		case 'caj':
-			if(!$c._checkAjae) return;
-			clearTimeout($c._checkAjae);
-			if(msg.answer == "yes") $c.confirmAjae(msg.input);
-			else if(KKuTu.NIGHT){
-				$c.sendError(440);
-				$c.socket.close();
-			}
-			break;
-		*/
   case 'test':
     checkTailUser($c.id, $c.place, msg);
     break;
