@@ -100,72 +100,21 @@ exports.publish = function(type, data, _room) {
     }
   }
 };
-exports.Robot = function(target, place, level) {
-  var my = this;
-	
-  my.id = target + place + Math.floor(Math.random() * 1000000000);
-  my.robot = true;
-  my.game = {};
-  my.data = {};
-  my.place = place;
-  my.target = target;
-  my.equip = { robot: true };
-	
-  my.getData = function() {
-    return {
-      id: my.id,
-      robot: true,
-      game: my.game,
-      data: my.data,
-      place: my.place,
-      target: target,
-      equip: my.equip,
-      level: my.level,
-      ready: true
-    };
-  };
-  my.setLevel = function(level) {
-    my.level = level;
-    my.data.score = Math.pow(10, level + 2);
-  };
-  my.setTeam = function(team) {
-    my.game.team = team;
-  };
-  my.send = function() {};
-  my.obtain = function() {};
-  my.invokeWordPiece = function(text, coef) {};
-  my.publish = function(type, data, noBlock) {
-    var i;
-		
-    if (my.target == null) {
-      for (i in DIC) {
-        if (DIC[i].place == place) DIC[i].send(type, data);
-      }
-    } else if (DIC[my.target]) {
-      DIC[my.target].send(type, data);
-    }
-  };
-  my.chat = function(msg, code) {
-    my.publish('chat', { value: msg });
-  };
-  my.setLevel(level);
-  my.setTeam(0);
-};
-exports.Data = function(data) {
-  var i; var j;
-	
-  if (!data) data = {};
-	
-  this.score = data.score || 0;
-  this.playTime = data.playTime || 0;
-  this.connectDate = data.connectDate || 0;
-  this.record = {};
-  for (i in Const.GAME_TYPE) {
-    this.record[j = Const.GAME_TYPE[i]] = data.record ? (data.record[Const.GAME_TYPE[i]] || [0, 0, 0, 0]) : [0, 0, 0, 0];
-    if (!this.record[j][3]) this.record[j][3] = 0;
+
+const _Robot = require('./kkutu/robot');
+exports.Robot = class extends _Robot {
+  constructor(target, place, level) {
+    super(target, place, level, DIC);
   }
-  // 전, 승, 점수
 };
+
+const _Data = require('./kkutu/data');
+exports.Data = class extends _Data {
+  constructor(data) {
+    super(data);
+  }
+};
+
 exports.WebServer = function(socket) {
   var my = this;
 	
