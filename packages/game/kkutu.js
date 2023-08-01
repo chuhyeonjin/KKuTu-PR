@@ -115,33 +115,13 @@ exports.Data = class extends _Data {
   }
 };
 
-exports.WebServer = function(socket) {
-  var my = this;
-	
-  my.socket = socket;
-	
-  my.send = function(type, data) {
-    var i; var r = data || {};
-		
-    r.type = type;
-		
-    if (socket.readyState == 1) socket.send(JSON.stringify(r));
-  };
-  my.onWebServerMessage = function(msg) {
-    try { msg = JSON.parse(msg); } catch (e) { return; }
-		
-    switch (msg.type) {
-    case 'seek':
-      my.send('seek', { value: Object.keys(DIC).length });
-      break;
-    case 'narrate-friend':
-      exports.narrate(msg.list, 'friend', { id: msg.id, s: msg.s, stat: msg.stat });
-      break;
-    default:
-    }
-  };
-  socket.on('message', my.onWebServerMessage);
+const _WebServer = require('./kkutu/webServer');
+exports.WebServer = class extends _WebServer {
+  constructor(socket) {
+    super(socket, DIC, exports.narrate);
+  }
 };
+
 exports.Client = function(socket, profile, sid) {
   var my = this;
   var gp; var okg;
