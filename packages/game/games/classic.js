@@ -144,7 +144,7 @@ module.exports = class {
 				subChar: this.ROOM.game.subChar,
 				mission: this.ROOM.game.mission
 			}, true);
-			this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnStart, 2400);
+			this.ROOM.game.turnTimer = setTimeout(() => { this.ROOM.turnStart(); }, 2400);
 		}else{
 			this.ROOM.roundEnd();
 		}
@@ -175,7 +175,7 @@ module.exports = class {
 			wordLength: this.ROOM.game.wordLength,
 			seq: force ? this.ROOM.game.seq : undefined
 		}, true);
-		this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnEnd, Math.min(this.ROOM.game.roundTime, this.ROOM.game.turnTime + 100));
+		this.ROOM.game.turnTimer = setTimeout(() => { this.ROOM.turnEnd(); }, Math.min(this.ROOM.game.roundTime, this.ROOM.game.turnTime + 100));
 		if(si = this.ROOM.game.seq[this.ROOM.game.turn]) if(si.robot){
 			si._done = [];
 			this.ROOM.readyRobot(si);
@@ -190,7 +190,7 @@ module.exports = class {
 		target = this.DIC[this.ROOM.game.seq[this.ROOM.game.turn]] || this.ROOM.game.seq[this.ROOM.game.turn];
 
 		if(this.ROOM.game.loading){
-			this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnEnd, 100);
+			this.ROOM.game.turnTimer = setTimeout(() => { this.ROOM.turnEnd(); }, 100);
 			return;
 		}
 		this.ROOM.game.late = true;
@@ -207,7 +207,7 @@ module.exports = class {
 				score: score,
 				hint: w
 			}, true);
-			my.ROOM.game._rrt = setTimeout(my.ROOM.roundReady, 3000);
+			my.ROOM.game._rrt = setTimeout(() => { my.ROOM.roundReady(); }, 3000);
 		});
 		clearTimeout(this.ROOM.game.robotTimer);
 	}
@@ -264,7 +264,7 @@ module.exports = class {
 					if(my.ROOM.game.mission === true){
 						my.ROOM.game.mission = getMission(my.ROOM.rule.lang);
 					}
-					setTimeout(my.ROOM.turnNext, my.ROOM.game.turnTime / 6);
+					setTimeout(() => { my.ROOM.turnNext(); }, my.ROOM.game.turnTime / 6);
 					if(!client.robot){
 						client.invokeWordPiece(text, 1);
 						my.DB.kkutu[l].update([ '_id', text ]).set([ 'hit', $doc.hit + 1 ]).on();
@@ -384,7 +384,7 @@ module.exports = class {
 		function after(){
 			delay += text.length * ROBOT_TYPE_COEF[level];
 			robot._done.push(text);
-			setTimeout(my.ROOM.turnRobot, delay, robot, text);
+			setTimeout(() => { my.ROOM.turnRobot(robot, text); }, delay);
 		}
 		function getWishList(list){
 			var R = new Lizard.Tail();

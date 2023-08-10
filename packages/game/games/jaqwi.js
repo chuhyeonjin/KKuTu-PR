@@ -144,7 +144,7 @@ module.exports = class {
       round: this.ROOM.game.round,
       theme: this.ROOM.game.theme
     }, true);
-    setTimeout(this.ROOM.turnStart, 2400);
+    setTimeout(() => { this.ROOM.turnStart(); }, 2400);
   }
 
   /**
@@ -163,7 +163,7 @@ module.exports = class {
     this.ROOM.game.roundAt = Date.now();
     this.ROOM.game.meaned = 0;
     this.ROOM.game.primary = 0;
-    this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, this.ROOM.game.roundTime);
+    this.ROOM.game.qTimer = setTimeout(() => { this.ROOM.turnEnd(); }, this.ROOM.game.roundTime);
     this.ROOM.game.hintTimer = setTimeout(() => { this.broadcastTurnHint(); }, this.ROOM.game.roundTime * 0.333);
     this.ROOM.game.hintTimer2 = setTimeout(() => { this.broadcastTurnHint(); }, this.ROOM.game.roundTime * 0.667);
     this.ROOM.byMaster('turnStart', {
@@ -183,7 +183,7 @@ module.exports = class {
         answer: this.ROOM.game.answer ? this.ROOM.game.answer._id : ''
       });
     }
-    this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, 2500);
+    this.ROOM.game._rrt = setTimeout(() => { this.ROOM.roundReady(); }, 2500);
   }
 
   submit(client, text) {
@@ -202,12 +202,12 @@ module.exports = class {
       if (this.ROOM.game.primary == 0) {
         if (this.ROOM.game.roundTime - t > 10000) { // 가장 먼저 맞힌 시점에서 10초 이내에 맞히면 점수 약간 획득
           clearTimeout(this.ROOM.game.qTimer);
-          this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, 10000);
+          this.ROOM.game.qTimer = setTimeout(() => { this.ROOM.turnEnd(); }, 10000);
           for (i in this.ROOM.game.robots) {
             if (this.ROOM.game.roundTime > this.ROOM.game.robots[i]._delay) {
               clearTimeout(this.ROOM.game.robots[i]._timer);
               if (client != this.ROOM.game.robots[i]) {
-                if (Math.random() < ROBOT_CATCH_RATE[this.ROOM.game.robots[i].level]) { this.ROOM.game.robots[i]._timer = setTimeout(this.ROOM.turnRobot, ROBOT_TYPE_COEF[this.ROOM.game.robots[i].level], this.ROOM.game.robots[i], text); }
+                if (Math.random() < ROBOT_CATCH_RATE[this.ROOM.game.robots[i].level]) { this.ROOM.game.robots[i]._timer = setTimeout(() => { this.ROOM.turnRobot(this.ROOM.game.robots[i], text); }, ROBOT_TYPE_COEF[this.ROOM.game.robots[i].level]); }
               }
             }
           }
@@ -268,7 +268,7 @@ module.exports = class {
       if (Math.random() < ROBOT_CATCH_RATE[level]) {
         text = this.ROOM.game.answer._id;
         delay = this.ROOM.game.roundTime / 3 * i + text.length * ROBOT_TYPE_COEF[level];
-        robot._timer = setTimeout(this.ROOM.turnRobot, delay, robot, text);
+        robot._timer = setTimeout(() => { this.ROOM.turnRobot(robot, text); }, delay);
         robot._delay = delay;
         break;
       } else continue;

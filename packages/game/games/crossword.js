@@ -120,13 +120,13 @@ module.exports = class {
 		this.ROOM.byMaster('roundReady', {
 			seq: this.ROOM.game.seq
 		}, true);
-		setTimeout(this.ROOM.turnStart, 2400);
+        setTimeout(() => { this.ROOM.turnStart(); }, 2400);
 	}
 
 	turnStart() {
 		this.ROOM.game.late = false;
 		this.ROOM.game.roundAt = Date.now();
-		this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, this.ROOM.game.roundTime);
+		this.ROOM.game.qTimer = setTimeout(() => { this.ROOM.turnEnd(); }, this.ROOM.game.roundTime);
 		this.ROOM.byMaster('turnStart', {
 			boards: this.ROOM.game.boards,
 			means: this.ROOM.game.means
@@ -136,7 +136,7 @@ module.exports = class {
 	turnEnd() {
 		this.ROOM.game.late = true;
 		this.ROOM.byMaster('turnEnd', {});
-		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, 2500);
+		this.ROOM.game._rrt = setTimeout(() => { this.ROOM.roundReady(); }, 2500);
 	}
 
 	/**
@@ -181,7 +181,7 @@ module.exports = class {
 					const key = [ boardIndex, item.x, item.y, item.dir ];
 					if(++item.count === item.len){
 						const wordOfItem = this.ROOM.game.answers[key.join(',')]
-						if(wordOfItem) setTimeout(this.ROOM.submit, 1, client, wordOfItem, key);
+						if(wordOfItem) setTimeout(() => { this.ROOM.submit(client, wordOfItem, key); }, 1);
 					}
 				}
 			}

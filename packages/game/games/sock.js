@@ -87,7 +87,7 @@ module.exports = class {
 					round: this.ROOM.game.round,
 					board: this.ROOM.game.board
 				}, true);
-				this.ROOM.game.turnTimer = setTimeout(this.ROOM.turnStart, 2400);
+				this.ROOM.game.turnTimer = setTimeout(() => { this.ROOM.turnStart(); }, 2400);
 			});
 		}
 	}
@@ -95,7 +95,7 @@ module.exports = class {
 	turnStart() {
 		this.ROOM.game.late = false;
 		this.ROOM.game.roundAt = Date.now();
-		this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, this.ROOM.game.roundTime);
+		this.ROOM.game.qTimer = setTimeout(() => { this.ROOM.turnEnd(); }, this.ROOM.game.roundTime);
 		this.ROOM.byMaster('turnStart', {
 			roundTime: this.ROOM.game.roundTime
 		}, true);
@@ -105,7 +105,7 @@ module.exports = class {
 		this.ROOM.game.late = true;
 
 		this.ROOM.byMaster('turnEnd', {});
-		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, 3000);
+		this.ROOM.game._rrt = setTimeout(() => { this.ROOM.roundReady(); }, 3000);
 	}
 
 	submit(client, text) {

@@ -4,434 +4,470 @@ const JLog = require('kkutu-common/jjlog');
 const Lizard = require('kkutu-common/lizard');
 const Robot = require('./robot');
 
+/**
+ * Shuffle array
+ * @template T
+ * @param arr {T[]}
+ * @returns {T[]}
+ */
 function shuffle(arr) {
-  var i; var r = [];
-
-  for (i in arr) r.push(arr[i]);
-  r.sort(function(a, b) { return Math.random() - 0.5; });
-
-  return r;
+  const copyOfArr = [...arr];
+  copyOfArr.sort(() => Math.random() - 0.5);
+  return copyOfArr;
 }
-function getRewards(mode, score, bonus, rank, all, ss) {
-  var rw = { score: 0, money: 0 };
-  var sr = score / ss;
 
-  // all은 1~8
-  // rank는 0~7
-  switch (Const.GAME_TYPE[mode]) {
-  case 'EKT':
-    rw.score += score * 1.4;
-    break;
-  case 'ESH':
-    rw.score += score * 0.5;
-    break;
-  case 'KKT':
-    rw.score += score * 1.42;
-    break;
-  case 'KSH':
-    rw.score += score * 0.55;
-    break;
-  case 'CSQ':
-    rw.score += score * 0.4;
-    break;
-  case 'KCW':
-    rw.score += score * 1.0;
-    break;
-  case 'KTY':
-    rw.score += score * 0.3;
-    break;
-  case 'ETY':
-    rw.score += score * 0.37;
-    break;
-  case 'KAP':
-    rw.score += score * 0.8;
-    break;
-  case 'HUN':
-    rw.score += score * 0.5;
-    break;
-  case 'KDA':
-    rw.score += score * 0.57;
-    break;
-  case 'EDA':
-    rw.score += score * 0.65;
-    break;
-  case 'KSS':
-    rw.score += score * 0.5;
-    break;
-  case 'ESS':
-    rw.score += score * 0.22;
-    break;
-  default:
-    break;
+/**
+ * @param mode {number} 게임 모드 (숫자로 주어짐)
+ * @param score {number} 내가 얻은 점수
+ * @param bonus {number}
+ * @param rank {number} 게임에서 나의 점수 순위 (0 ~ 7)
+ * @param all {number} 전체 플레이어 명수 (1 ~ 8)
+ * @param sumOfScore {number} 한 게임의 플레이어들의 점수의 합
+ * @returns {{score: number, money: number, together?: boolean}}
+ */
+function getRewards(mode, score, bonus, rank, all, sumOfScore) {
+  const scoreMultiplier = {
+    EKT: 1.4,
+    ESH: 0.5,
+    KKT: 1.42,
+    KSH: 0.55,
+    CSQ: 0.4,
+    KCW: 1.0,
+    KTY: 0.3,
+    ETY: 0.37,
+    KAP: 0.8,
+    HUN: 0.5,
+    KDA: 0.57,
+    EDA: 0.65,
+    KSS: 0.5,
+    ESS: 0.22
+  };
+
+  const reward = { score: 0, money: 0 };
+
+  const gameModeName = Const.GAME_TYPE[mode];
+  if (scoreMultiplier[gameModeName]) {
+    reward.score += score * scoreMultiplier[gameModeName];
   }
-  rw.score = rw.score *
+
+  const scoreRatio = score / sumOfScore;
+  reward.score = reward.score *
     (0.77 + 0.05 * (all - rank) * (all - rank)) * // 순위
-    1.25 / (1 + 1.25 * sr * sr) // 점차비(양학했을 수록 ↓)
+    1.25 / (1 + 1.25 * scoreRatio * scoreRatio) // 점차비(양학했을 수록 ↓)
   ;
-  rw.money = 1 + rw.score * 0.01;
+  reward.money = 1 + reward.score * 0.01;
   if (all < 2) {
-    rw.score = rw.score * 0.05;
-    rw.money = rw.money * 0.05;
+    reward.score = reward.score * 0.05;
+    reward.money = reward.money * 0.05;
   } else {
-    rw.together = true;
+    reward.together = true;
   }
-  rw.score += bonus;
-  rw.score = rw.score || 0;
-  rw.money = rw.money || 0;
+  reward.score += bonus;
+  reward.score = reward.score || 0;
+  reward.money = reward.money || 0;
 
   // applyEquipOptions에서 반올림한다.
-  return rw;
+  return reward;
 }
+
 function filterRobot(item) {
   if (!item) return {};
   return (item.robot && item.getData) ? item.getData() : item;
 }
 
-const Room = function(room, channel, _rid, DIC, ROOM, DB, publish) {
-  var my = this;
+class Room {
+  constructor(room, channel, _rid, DIC, ROOM, DB, publish) {
+    this.DIC = DIC;
+    this.ROOM = ROOM;
+    this.DB = DB;
+    this.publish = publish;
 
-  my.id = room.id || _rid;
-  my.channel = channel;
-  my.opts = {};
-  /*my.title = room.title;
-	my.password = room.password;
-	my.limit = Math.round(room.limit);
-	my.mode = room.mode;
-	my.rule = Const.getRule(room.mode);
-	my.round = Math.round(room.round);
-	my.time = room.time * my.rule.time;
-	my.opts = {
-		manner: room.opts.manner,
-		extend: room.opts.injeong,
-		mission: room.opts.mission,
-		loanword: room.opts.loanword,
-		injpick: room.opts.injpick || []
-	};*/
-  my.master = null;
-  my.tail = [];
-  my.players = [];
-  my.kicked = [];
-  my.kickVote = null;
+    this.id = room.id || _rid;
+    this.channel = channel;
+    this.opts = {};
+    /*my.title = room.title;
+      my.password = room.password;
+      my.limit = Math.round(room.limit);
+      my.mode = room.mode;
+      my.rule = Const.getRule(room.mode);
+      my.round = Math.round(room.round);
+      my.time = room.time * my.rule.time;
+      my.opts = {
+          manner: room.opts.manner,
+          extend: room.opts.injeong,
+          mission: room.opts.mission,
+          loanword: room.opts.loanword,
+          injpick: room.opts.injpick || []
+      };*/
+    this.master = null;
+    this.tail = [];
+    this.players = [];
+    this.kicked = [];
+    this.kickVote = null;
+  
+    this.gaming = false;
+    this.game = {};
+  
+    this.set(room);
+  }
 
-  my.gaming = false;
-  my.game = {};
-
-  my.getData = function() {
-    var i; var readies = {};
-    var pls = [];
-    var seq = my.game.seq ? my.game.seq.map(filterRobot) : [];
-    var o;
-
-    for (i in my.players) {
-      if (o = DIC[my.players[i]]) {
-        readies[my.players[i]] = {
+  getData() {
+    const readies = {};
+    const players = [];
+    for (const player of this.players) {
+      const o = this.DIC[player];
+      if (o) {
+        readies[player] = {
           r: o.ready || o.game.ready,
           f: o.form || o.game.form,
           t: o.team || o.game.team
         };
       }
-      pls.push(filterRobot(my.players[i]));
+      players.push(filterRobot(player));
     }
+
+    const seq = this.game.seq ? this.game.seq.map(filterRobot) : [];
+
     return {
-      id: my.id,
-      channel: my.channel,
-      title: my.title,
-      password: my.password ? true : false,
-      limit: my.limit,
-      mode: my.mode,
-      round: my.round,
-      time: my.time,
-      master: my.master,
-      players: pls,
+      id: this.id,
+      channel: this.channel,
+      title: this.title,
+      password: this.password ? true : false,
+      limit: this.limit,
+      mode: this.mode,
+      round: this.round,
+      time: this.time,
+      master: this.master,
+      players: players,
       readies: readies,
-      gaming: my.gaming,
+      gaming: this.gaming,
       game: {
-        round: my.game.round,
-        turn: my.game.turn,
+        round: this.game.round,
+        turn: this.game.turn,
         seq: seq,
-        title: my.game.title,
-        mission: my.game.mission
+        title: this.game.title,
+        mission: this.game.mission
       },
-      practice: my.practice ? true : false,
-      opts: my.opts
+      practice: this.practice ? true : false,
+      opts: this.opts
     };
-  };
-  my.addAI = function(caller) {
-    if (my.players.length >= my.limit) {
-      return caller.sendError(429);
-    }
-    if (my.gaming) {
-      return caller.send('error', { code: 416, target: my.id });
-    }
-    if (!my.rule.ai) {
-      return caller.sendError(415);
-    }
-    my.players.push(new Robot(null, my.id, 2, DIC));
-    my.export();
-  };
-  my.setAI = function(target, level, team) {
-    var i;
+  }
 
-    for (i in my.players) {
-      if (!my.players[i]) continue;
-      if (!my.players[i].robot) continue;
-      if (my.players[i].id == target) {
-        my.players[i].setLevel(level);
-        my.players[i].setTeam(team);
-        my.export();
+  addAI(caller) {
+    if (this.players.length >= this.limit) return caller.sendError(429);
+
+    if (this.gaming) return caller.send('error', { code: 416, target: this.id });
+
+    if (!this.rule.ai) return caller.sendError(415);
+
+    this.players.push(new Robot(null, this.id, 2, this.DIC));
+    this.export();
+  }
+
+  setAI(target, level, team) {
+    for (const player of this.players) {
+      if (!player) continue;
+      if (!player.robot) continue;
+
+      if (player.id == target) {
+        player.setLevel(level);
+        player.setTeam(team);
+        this.export();
         return true;
       }
     }
     return false;
-  };
-  my.removeAI = function(target, noEx) {
-    var i; var j;
+  }
 
-    for (i in my.players) {
-      if (!my.players[i]) continue;
-      if (!my.players[i].robot) continue;
-      if (!target || my.players[i].id == target) {
-        if (my.gaming) {
-          j = my.game.seq.indexOf(my.players[i]);
-          if (j != -1) my.game.seq.splice(j, 1);
+  /**
+   *
+   * @param target {string | any} fasly 하면 AI이기만 하면 삭제
+   * @param noEx {boolean} this.export 실행 여부
+   * @returns {boolean} 성공 여부
+   */
+  removeAI(target, noEx) {
+    for (const i in this.players) {
+      if (!this.players[i]) continue;
+      if (!this.players[i].robot) continue;
+
+      if (!target || this.players[i].id == target) {
+        if (this.gaming) {
+          const j = this.game.seq.indexOf(this.players[i]);
+          if (j != -1) this.game.seq.splice(j, 1);
         }
-        my.players.splice(i, 1);
-        if (!noEx) my.export();
+        this.players.splice(i, 1);
+        if (!noEx) this.export();
         return true;
       }
     }
-    return false;
-  };
-  my.come = function(client) {
-    if (!my.practice) client.place = my.id;
 
-    if (my.players.push(client.id) == 1) {
-      my.master = client.id;
+    return false;
+  }
+
+  come(client) {
+    if (!this.practice) client.place = this.id;
+
+    if (this.players.push(client.id) == 1) {
+      this.master = client.id;
     }
+
     if (Cluster.isWorker) {
       client.ready = false;
       client.team = 0;
       client.cameWhenGaming = false;
       client.form = 'J';
 
-      if (!my.practice) process.send({ type: 'room-come', target: client.id, id: my.id });
-      my.export(client.id);
+      if (!this.practice) process.send({ type: 'room-come', target: client.id, id: this.id });
+      this.export(client.id);
     }
-  };
-  my.spectate = function(client, password) {
-    if (!my.practice) client.place = my.id;
-    var len = my.players.push(client.id);
+  }
+
+  spectate(client, password) {
+    if (!this.practice) client.place = this.id;
+
+    this.players.push(client.id);
 
     if (Cluster.isWorker) {
       client.ready = false;
       client.team = 0;
       client.cameWhenGaming = true;
-      client.form = (len > my.limit) ? 'O' : 'S';
+      client.form = (this.players.length > this.limit) ? 'O' : 'S';
 
-      process.send({ type: 'room-spectate', target: client.id, id: my.id, pw: password });
-      my.export(client.id, false, true);
+      process.send({ type: 'room-spectate', target: client.id, id: this.id, pw: password });
+      this.export(client.id, false, true);
     }
-  };
-  my.go = function(client, kickVote) {
-    var x = my.players.indexOf(client.id);
-    var me;
+  }
 
-    if (x == -1) {
+  /**
+   * 플레이어 퇴장
+   *
+   * @param client
+   * @param kickVote
+   * @returns {*}
+   */
+  go(client, kickVote) {
+    if (!this.players.includes(client.id)) {
       client.place = 0;
-      if (my.players.length < 1) delete ROOM[my.id];
+      if (this.players.length < 1) delete this.ROOM[this.id];
       return client.sendError(409);
     }
-    my.players.splice(x, 1);
+
+    this.players.splice(this.players.indexOf(client.id), 1);
     client.game = {};
-    if (client.id == my.master) {
-      while (my.removeAI(false, true));
-      my.master = my.players[0];
+
+    if (client.id == this.master) {
+      while (this.removeAI(false, true));
+      this.master = this.players[0];
     }
-    if (DIC[my.master]) {
-      DIC[my.master].ready = false;
-      if (my.gaming) {
-        x = my.game.seq.indexOf(client.id);
+
+    if (this.DIC[this.master]) {
+      this.DIC[this.master].ready = false;
+
+      if (this.gaming) {
+        const x = this.game.seq.indexOf(client.id);
         if (x != -1) {
-          if (my.game.seq.length <= 2) {
-            my.game.seq.splice(x, 1);
-            my.roundEnd();
+          if (this.game.seq.length <= 2) {
+            this.game.seq.splice(x, 1);
+            this.roundEnd();
           } else {
-            me = my.game.turn == x;
-            if (me && my.rule.ewq) {
-              clearTimeout(my.game._rrt);
-              my.game.loading = false;
-              if (Cluster.isWorker) my.turnEnd();
+            const me = this.game.turn == x;
+            if (me && this.rule.ewq) {
+              clearTimeout(this.game._rrt);
+              this.game.loading = false;
+              if (Cluster.isWorker) this.turnEnd();
             }
-            my.game.seq.splice(x, 1);
-            if (my.game.turn > x) {
-              my.game.turn--;
-              if (my.game.turn < 0) my.game.turn = my.game.seq.length - 1;
+            this.game.seq.splice(x, 1);
+            if (this.game.turn > x) {
+              this.game.turn--;
+              if (this.game.turn < 0) this.game.turn = this.game.seq.length - 1;
             }
-            if (my.game.turn >= my.game.seq.length) my.game.turn = 0;
+            if (this.game.turn >= this.game.seq.length) this.game.turn = 0;
           }
         }
       }
     } else {
-      if (my.gaming) {
-        my.interrupt();
-        my.game.late = true;
-        my.gaming = false;
-        my.game = {};
+      if (this.gaming) {
+        this.interrupt();
+        this.game.late = true;
+        this.gaming = false;
+        this.game = {};
       }
-      delete ROOM[my.id];
+      delete this.ROOM[this.id];
     }
-    if (my.practice) {
-      clearTimeout(my.game.turnTimer);
+
+    if (this.practice) {
+      clearTimeout(this.game.turnTimer);
       client.subPlace = 0;
     } else client.place = 0;
 
     if (Cluster.isWorker) {
-      if (!my.practice) {
+      if (!this.practice) {
         client.socket.close();
-        process.send({ type: 'room-go', target: client.id, id: my.id, removed: !ROOM.hasOwnProperty(my.id) });
+        process.send({ type: 'room-go', target: client.id, id: this.id, removed: !this.ROOM.hasOwnProperty(this.id) });
       }
-      my.export(client.id, kickVote);
+      this.export(client.id, kickVote);
     }
-  };
-  my.set = function(room) {
-    var i; var k; var ijc; var ij;
+  }
+  set(room) {
+    this.title = room.title;
+    this.password = room.password;
+    this.limit = Math.max(Math.min(8, this.players.length), Math.round(room.limit));
+    this.mode = room.mode;
+    this.rule = Const.getRule(room.mode);
+    this.round = Math.round(room.round);
+    this.time = room.time * this.rule.time;
 
-    my.title = room.title;
-    my.password = room.password;
-    my.limit = Math.max(Math.min(8, my.players.length), Math.round(room.limit));
-    my.mode = room.mode;
-    my.rule = Const.getRule(room.mode);
-    my.round = Math.round(room.round);
-    my.time = room.time * my.rule.time;
-    if (room.opts && my.opts) {
-      for (i in Const.OPTIONS) {
-        k = Const.OPTIONS[i].name.toLowerCase();
-        my.opts[k] = room.opts[k] && my.rule.opts.includes(i);
+    if (room.opts && this.opts) {
+      for (const optionKey in Const.OPTIONS) {
+        const optionName = Const.OPTIONS[optionKey].name.toLowerCase();
+        this.opts[optionName] = room.opts[optionName] && this.rule.opts.includes(optionKey);
       }
-      if (ijc = my.rule.opts.includes('ijp')) {
-        ij = Const[`${my.rule.lang.toUpperCase()}_IJP`];
-        my.opts.injpick = (room.opts.injpick || []).filter(function(item) { return ij.includes(item); });
-      } else my.opts.injpick = [];
-    }
-    if (!my.rule.ai) {
-      while (my.removeAI(false, true));
-    }
-    for (i in my.players) {
-      if (DIC[my.players[i]]) DIC[my.players[i]].ready = false;
+
+      // ijp 옵션은 어인정 주제선택이 가능함을 나타냄
+      const isInjPickable = this.rule.opts.includes('ijp');
+      if (isInjPickable) {
+        const injPickAllowList = Const[`${this.rule.lang.toUpperCase()}_IJP`];
+        this.opts.injpick = (room.opts.injpick || []).filter((item) => injPickAllowList.includes(item));
+      } else this.opts.injpick = [];
     }
 
-    if (!my.rule) {
-      JLog.warn('Unknown mode: ' + my.mode);
+    if (!this.rule.ai) {
+      while (this.removeAI(false, true));
+    }
+
+    for (const player of this.players) {
+      if (this.DIC[player]) this.DIC[player].ready = false;
+    }
+
+    if (!this.rule) {
+      JLog.warn('Unknown mode: ' + this.mode);
       return;
     }
-    const implementation = require(`../games/${my.rule.rule.toLowerCase()}`);
-    my.gameImplementation = new implementation(DB, DIC, my);
-  };
-  my.preReady = function(teams) {
-    var i; var j; var t = 0; var l = 0;
-    var avTeam = [];
 
+    const implementation = require(`../games/${this.rule.rule.toLowerCase()}`);
+    this.gameImplementation = new implementation(this.DB, this.DIC, this);
+  }
+
+  preReady(teams) {
     // 팀 검사
     if (teams) {
       if (teams[0].length) {
         if (teams[1].length > 1 || teams[2].length > 1 || teams[3].length > 1 || teams[4].length > 1) return 418;
       } else {
-        for (i = 1; i < 5; i++) {
-          if (j = teams[i].length) {
-            if (t) {
-              if (t != j) return 418;
-            } else t = j;
-            l++;
-            avTeam.push(i);
-          }
+        let otherTeamSize = 0;
+        const availableTeam = [];
+
+        for (let i = 1; i < 5; i++) {
+          const currentTeamSize = teams[i].length;
+          if (!currentTeamSize) continue;
+
+          if (otherTeamSize) {
+            if (otherTeamSize !== currentTeamSize) return 418;
+          } else otherTeamSize = currentTeamSize;
+
+          availableTeam.push(i);
         }
-        if (l < 2) return 418;
-        my._avTeam = shuffle(avTeam);
+        if (availableTeam.length < 2) return 418;
+        this._avTeam = shuffle(availableTeam);
       }
     }
+
     // 인정픽 검사
-    if (!my.rule) return 400;
-    if (my.rule.opts.includes('ijp')) {
-      if (!my.opts.injpick) return 400;
-      if (!my.opts.injpick.length) return 413;
-      if (!my.opts.injpick.every(function(item) {
+    if (!this.rule) return 400;
+    if (this.rule.opts.includes('ijp')) {
+      if (!this.opts.injpick) return 400;
+      if (!this.opts.injpick.length) return 413;
+      if (!this.opts.injpick.every((item) => {
         return !Const.IJP_EXCEPT.includes(item);
       })) return 414;
     }
-    return false;
-  };
-  my.ready = function() {
-    var i; var all = true;
-    var len = 0;
-    var teams = [[], [], [], [], []];
 
-    for (i in my.players) {
-      if (my.players[i].robot) {
-        len++;
-        teams[my.players[i].game.team].push(my.players[i]);
+    return false;
+  }
+
+  ready() {
+    let isAllReady = true;
+    let numberOfPlayer = 0;
+    const teams = [[], [], [], [], []];
+
+    for (const player of this.players) {
+      if (player.robot) {
+        numberOfPlayer++;
+        teams[player.game.team].push(player);
         continue;
       }
-      if (!DIC[my.players[i]]) continue;
-      if (DIC[my.players[i]].form == 'S') continue;
 
-      len++;
-      teams[DIC[my.players[i]].team].push(my.players[i]);
+      if (!this.DIC[player]) continue;
+      if (this.DIC[player].form == 'S') continue;
 
-      if (my.players[i] == my.master) continue;
-      if (!DIC[my.players[i]].ready) {
-        all = false;
+      numberOfPlayer++;
+      teams[this.DIC[player].team].push(player);
+
+      if (player === this.master) continue;
+
+      if (!this.DIC[player].ready) {
+        isAllReady = false;
         break;
       }
     }
-    if (!DIC[my.master]) return;
-    if (len < 2) return DIC[my.master].sendError(411);
-    if (i = my.preReady(teams)) return DIC[my.master].sendError(i);
-    if (all) {
-      my._teams = teams;
-      my.start();
-    } else DIC[my.master].sendError(412);
-  };
-  my.start = function(pracLevel) {
-    var i; var j; var o; var hum = 0;
-    var now = (new Date()).getTime();
 
-    my.gaming = true;
-    my.game.late = true;
-    my.game.round = 0;
-    my.game.turn = 0;
-    my.game.seq = [];
-    my.game.robots = [];
-    if (my.practice) {
-      my.game.robots.push(o = new Robot(my.master, my.id, pracLevel, DIC));
-      my.game.seq.push(o, my.master);
+    if (!this.DIC[this.master]) return;
+    if (numberOfPlayer < 2) return this.DIC[this.master].sendError(411);
+
+    const preReadyResult = this.preReady(teams);
+    if (preReadyResult) return this.DIC[this.master].sendError(preReadyResult);
+    if (!isAllReady) return this.DIC[this.master].sendError(412);
+
+    this._teams = teams;
+    this.start();
+  }
+
+  start(pracLevel) {
+    const now = Date.now();
+
+    this.gaming = true;
+    this.game.late = true;
+    this.game.round = 0;
+    this.game.turn = 0;
+    this.game.seq = [];
+    this.game.robots = [];
+
+    let NumberOfHumanPlayer = 0;
+
+    if (this.practice) {
+      const robot = new Robot(this.master, this.id, pracLevel, this.DIC);
+      this.game.robots.push(robot);
+      this.game.seq.push(robot, this.master);
     } else {
-      for (i in my.players) {
-        if (my.players[i].robot) {
-          my.game.robots.push(my.players[i]);
+      for (const player of this.players) {
+        if (player.robot) {
+          this.game.robots.push(player);
         } else {
-          if (!(o = DIC[my.players[i]])) continue;
+          const o = this.DIC[player];
+          if (!o) continue;
           if (o.form != 'J') continue;
-          hum++;
+          NumberOfHumanPlayer++;
         }
-        if (my.players[i]) my.game.seq.push(my.players[i]);
+        if (player) this.game.seq.push(player);
       }
-      if (my._avTeam) {
-        o = my.game.seq.length;
-        j = my._avTeam.length;
-        my.game.seq = [];
-        for (i = 0; i < o; i++) {
-          var v = my._teams[my._avTeam[i % j]].shift();
 
+      if (this._avTeam) {
+        const numberOfPlayers = this.game.seq.length;
+        const numberOfTeams = this._avTeam.length;
+        this.game.seq = [];
+        for (let i = 0; i < numberOfPlayers; i++) {
+          const v = this._teams[this._avTeam[i % numberOfTeams]].shift();
           if (!v) continue;
-          my.game.seq[i] = v;
+          this.game.seq[i] = v;
         }
       } else {
-        my.game.seq = shuffle(my.game.seq);
+        this.game.seq = shuffle(this.game.seq);
       }
     }
-    my.game.mission = null;
-    for (i in my.game.seq) {
-      o = DIC[my.game.seq[i]] || my.game.seq[i];
+
+    this.game.mission = null;
+    for (const player of this.game.seq) {
+      const o = this.DIC[player] || player;
       if (!o) continue;
       if (!o.game) continue;
 
@@ -442,42 +478,36 @@ const Room = function(room, channel, _rid, DIC, ROOM, DB, publish) {
       o.game.item = [/*0, 0, 0, 0, 0, 0*/];
       o.game.wpc = [];
     }
-    my.game.hum = hum;
-    my.getTitle().then(function(title) {
-      my.game.title = title;
-      my.export();
-      setTimeout(my.roundReady, 2000);
+    this.game.hum = NumberOfHumanPlayer;
+    this.getTitle().then((title) => {
+      this.game.title = title;
+      this.export();
+      setTimeout(() => { this.roundReady(); }, 2000);
     });
-    my.byMaster('starting', { target: my.id });
-    delete my._avTeam;
-    delete my._teams;
-  };
-  my.roundReady = function() {
-    if (!my.gaming) return;
+    this.byMaster('starting', { target: this.id });
+    delete this._avTeam;
+    delete this._teams;
+  }
 
-    return my.route('roundReady');
-  };
-  my.interrupt = function() {
-    clearTimeout(my.game._rrt);
-    clearTimeout(my.game.turnTimer);
-    clearTimeout(my.game.hintTimer);
-    clearTimeout(my.game.hintTimer2);
-    clearTimeout(my.game.qTimer);
-  };
-  my.roundEnd = function(data) {
-    var i; var o; var rw;
-    var res = [];
-    var users = {};
-    var rl;
-    var pv = -1;
-    var suv = [];
-    var teams = [null, [], [], [], []];
-    var sumScore = 0;
-    var now = (new Date()).getTime();
+  roundReady() {
+    if (!this.gaming) return;
+    return this.route('roundReady');
+  }
 
-    my.interrupt();
-    for (i in my.players) {
-      o = DIC[my.players[i]];
+  interrupt() {
+    clearTimeout(this.game._rrt);
+    clearTimeout(this.game.turnTimer);
+    clearTimeout(this.game.hintTimer);
+    clearTimeout(this.game.hintTimer2);
+    clearTimeout(this.game.qTimer);
+  }
+
+  roundEnd(data) {
+    const now = Date.now();
+
+    this.interrupt();
+    for (const player of this.players) {
+      const o = this.DIC[player];
       if (!o) continue;
       if (o.cameWhenGaming) {
         o.cameWhenGaming = false;
@@ -489,141 +519,170 @@ const Room = function(room, channel, _rid, DIC, ROOM, DB, publish) {
         o.setForm('J');
       }
     }
-    for (i in my.game.seq) {
-      o = DIC[my.game.seq[i]] || my.game.seq[i];
+
+    const teams = [null, [], [], [], []];
+
+    for (const player of this.game.seq) {
+      const o = this.DIC[player] || player;
       if (!o) continue;
-      if (o.robot) {
-        if (o.game.team) teams[o.game.team].push(o.game.score);
-      } else if (o.team) teams[o.team].push(o.game.score);
+
+      if (o.robot && o.game.team) teams[o.game.team].push(o.game.score);
+      if (!o.robot && o.team) teams[o.team].push(o.game.score);
     }
-    for (i = 1; i < 5; i++) if (o = teams[i].length) teams[i] = [o, teams[i].reduce(function(p, item) { return p + item; }, 0)];
-    for (i in my.game.seq) {
-      o = DIC[my.game.seq[i]];
+
+    for (let i = 1; i <= 4; i++) {
+      const teamSize = teams[i].length;
+      if (teamSize) teams[i] = [teamSize, teams[i].reduce((p, item) => p + item, 0)];
+    }
+
+    const res = [];
+    let sumScore = 0;
+
+    for (const player of this.game.seq) {
+      const o = this.DIC[player];
       if (!o) continue;
       sumScore += o.game.score;
       res.push({ id: o.id, score: o.team ? teams[o.team][1] : o.game.score, dim: o.team ? teams[o.team][0] : 1 });
     }
-    res.sort(function(a, b) { return b.score - a.score; });
-    rl = res.length;
 
-    for (i in res) {
-      o = DIC[res[i].id];
-      if (pv == res[i].score) {
+    res.sort((a, b) => b.score - a.score);
+    const resLength = res.length;
+
+    const users = {};
+    const suv = [];
+    let previous = -1;
+
+    for (const i in res) {
+      const o = this.DIC[res[i].id];
+
+      if (previous === res[i].score) {
         res[i].rank = res[Number(i) - 1].rank;
       } else {
         res[i].rank = Number(i);
       }
-      pv = res[i].score;
-      rw = getRewards(my.mode, o.game.score / res[i].dim, o.game.bonus, res[i].rank, rl, sumScore);
-      rw.playTime = now - o.playAt;
-      o.applyEquipOptions(rw); // 착용 아이템 보너스 적용
-      if (rw.together) {
-        if (o.game.wpc) o.game.wpc.forEach(function(item) { o.obtain('$WPC' + item, 1); }); // 글자 조각 획득 처리
-        o.onOKG(rw.playTime);
+      previous = res[i].score;
+
+      const rewards = getRewards(this.mode, o.game.score / res[i].dim, o.game.bonus, res[i].rank, resLength, sumScore);
+      rewards.playTime = now - o.playAt;
+      o.applyEquipOptions(rewards); // 착용 아이템 보너스 적용
+      if (rewards.together) {
+        if (o.game.wpc) o.game.wpc.forEach((item) => o.obtain('$WPC' + item, 1)); // 글자 조각 획득 처리
+        o.onOKG(rewards.playTime);
       }
-      res[i].reward = rw;
-      o.data.score += rw.score || 0;
-      o.money += rw.money || 0;
-      o.data.record[Const.GAME_TYPE[my.mode]][2] += rw.score || 0;
-      o.data.record[Const.GAME_TYPE[my.mode]][3] += rw.playTime;
-      if (!my.practice && rw.together) {
-        o.data.record[Const.GAME_TYPE[my.mode]][0]++;
-        if (res[i].rank == 0) o.data.record[Const.GAME_TYPE[my.mode]][1]++;
+      res[i].reward = rewards;
+      o.data.score += rewards.score || 0;
+      o.money += rewards.money || 0;
+      o.data.record[Const.GAME_TYPE[this.mode]][2] += rewards.score || 0;
+      o.data.record[Const.GAME_TYPE[this.mode]][3] += rewards.playTime;
+      if (!this.practice && rewards.together) {
+        o.data.record[Const.GAME_TYPE[this.mode]][0]++;
+        if (res[i].rank == 0) o.data.record[Const.GAME_TYPE[this.mode]][1]++;
       }
       users[o.id] = o.getData();
 
       suv.push(o.flush(true));
     }
-    Lizard.all(suv).then(function(uds) {
-      var o = {};
 
-      suv = [];
-      for (i in uds) {
+    Lizard.all(suv).then((uds) => {
+      const o = {};
+      const suv = [];
+
+      for (const i in uds) {
         o[uds[i].id] = { prev: uds[i].prev };
-        suv.push(DB.redis.getSurround(uds[i].id));
+        suv.push(this.DB.redis.getSurround(uds[i].id));
       }
-      Lizard.all(suv).then(function(ranks) {
-        var i; var j;
 
-        for (i in ranks) {
+      Lizard.all(suv).then((ranks) => {
+        for (const i in ranks) {
           if (!o[ranks[i].target]) continue;
 
           o[ranks[i].target].list = ranks[i].data;
         }
-        my.byMaster('roundEnd', { result: res, users: users, ranks: o, data: data }, true);
+        this.byMaster('roundEnd', { result: res, users: users, ranks: o, data: data }, true);
       });
     });
-    my.gaming = false;
-    my.export();
-    delete my.game.seq;
-    delete my.game.wordLength;
-    delete my.game.dic;
-  };
-  my.byMaster = function(type, data, nob) {
-    if (DIC[my.master]) DIC[my.master].publish(type, data, nob);
-  };
-  my.export = function(target, kickVote, spec) {
-    var obj = { room: my.getData() };
-    var i; var o;
+    this.gaming = false;
+    this.export();
+    delete this.game.seq;
+    delete this.game.wordLength;
+    delete this.game.dic;
+  }
 
-    if (!my.rule) return;
+  byMaster(type, data, nob) {
+    if (this.DIC[this.master]) this.DIC[this.master].publish(type, data, nob);
+  }
+
+  export(target, kickVote, spec) {
+    const obj = { room: this.getData() };
+
+    if (!this.rule) return;
+
     if (target) obj.target = target;
     if (kickVote) obj.kickVote = kickVote;
-    if (spec && my.gaming) {
-      if (my.rule.rule == 'Classic') {
-        if (my.game.chain) obj.chain = my.game.chain.length;
-      } else if (my.rule.rule == 'Jaqwi') {
-        obj.theme = my.game.theme;
-        obj.conso = my.game.conso;
-      } else if (my.rule.rule == 'Crossword') {
-        obj.prisoners = my.game.prisoners;
-        obj.boards = my.game.boards;
-        obj.means = my.game.means;
+
+    if (spec && this.gaming) {
+      if (this.rule.rule == 'Classic') {
+        if (this.game.chain) obj.chain = this.game.chain.length;
+      } else if (this.rule.rule == 'Jaqwi') {
+        obj.theme = this.game.theme;
+        obj.conso = this.game.conso;
+      } else if (this.rule.rule == 'Crossword') {
+        obj.prisoners = this.game.prisoners;
+        obj.boards = this.game.boards;
+        obj.means = this.game.means;
       }
+
       obj.spec = {};
-      for (i in my.game.seq) {
-        if (o = DIC[my.game.seq[i]]) obj.spec[o.id] = o.game.score;
+      for (const player of this.game.seq) {
+        const o = this.DIC[player];
+        if (o) obj.spec[o.id] = o.game.score;
       }
     }
-    if (my.practice) {
-      if (DIC[my.master || target]) DIC[my.master || target].send('room', obj);
+
+    if (this.practice) {
+      if (this.DIC[this.master || target]) this.DIC[this.master || target].send('room', obj);
     } else {
-      publish('room', obj, my.password);
+      this.publish('room', obj, this.password);
     }
-  };
-  my.turnStart = function(force) {
-    if (!my.gaming) return;
+  }
 
-    return my.route('turnStart', force);
-  };
-  my.readyRobot = function(robot) {
-    if (!my.gaming) return;
+  turnStart(force) {
+    if (!this.gaming) return;
+    return this.route('turnStart', force);
+  }
 
-    return my.route('readyRobot', robot);
-  };
-  my.turnRobot = function(robot, text, data) {
-    if (!my.gaming) return;
+  readyRobot(robot) {
+    if (!this.gaming) return;
+    return this.route('readyRobot', robot);
+  }
 
-    my.submit(robot, text, data);
-    //return my.route("turnRobot", robot, text);
-  };
-  my.turnNext = function(force) {
-    if (!my.gaming) return;
-    if (!my.game.seq) return;
+  turnRobot(robot, text, data) {
+    if (!this.gaming) return;
+    this.submit(robot, text, data);
+    //return this.route("turnRobot", robot, text);
+  }
 
-    my.game.turn = (my.game.turn + 1) % my.game.seq.length;
-    my.turnStart(force);
-  };
-  my.turnEnd = function() {
-    return my.route('turnEnd');
-  };
-  my.submit = function(client, text, data) {
-    return my.route('submit', client, text, data);
-  };
-  my.getScore = function(text, delay, ignoreMission) {
-    return my.route('getScore', text, delay, ignoreMission);
-  };
-  my.getTurnSpeed = function(rt) {
+  turnNext(force) {
+    if (!this.gaming) return;
+    if (!this.game.seq) return;
+
+    this.game.turn = (this.game.turn + 1) % this.game.seq.length;
+    this.turnStart(force);
+  }
+
+  turnEnd() {
+    return this.route('turnEnd');
+  }
+
+  submit(client, text, data) {
+    return this.route('submit', client, text, data);
+  }
+
+  getScore(text, delay, ignoreMission) {
+    return this.route('getScore', text, delay, ignoreMission);
+  }
+
+  getTurnSpeed(rt) {
     if (rt < 5000) return 10;
     else if (rt < 11000) return 9;
     else if (rt < 18000) return 8;
@@ -635,17 +694,17 @@ const Room = function(room, channel, _rid, DIC, ROOM, DB, publish) {
     else if (rt < 81000) return 2;
     else if (rt < 95000) return 1;
     else return 0;
-  };
-  my.getTitle = function() {
-    return my.route('getTitle');
-  };
-  my.route = function(func, ...args) {
-    if (!my.gameImplementation) return JLog.warn('Unknown rule: ' + my.rule.rule);
-    if (!my.gameImplementation[func]) return JLog.warn('Unknown function: ' + func);
-    return my.gameImplementation[func](...args);
-  };
+  }
 
-  my.set(room);
-};
+  getTitle() {
+    return this.route('getTitle');
+  }
+
+  route(func, ...args) {
+    if (!this.gameImplementation) return JLog.warn('Unknown rule: ' + this.rule.rule);
+    if (!this.gameImplementation[func]) return JLog.warn('Unknown function: ' + func);
+    return this.gameImplementation[func](...args);
+  }
+}
 
 module.exports = Room;

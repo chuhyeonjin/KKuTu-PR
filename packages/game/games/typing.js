@@ -81,7 +81,7 @@ module.exports = class {
 				round: this.ROOM.game.round,
 				list: this.ROOM.game.clist
 			}, true);
-			setTimeout(this.ROOM.turnStart, 2400);
+            setTimeout(() => { this.ROOM.turnStart(); }, 2400);
 		} else {
 			const scores = {};
 			this.traverse((o) => {
@@ -98,7 +98,7 @@ module.exports = class {
 			o.game.index = 0;
 			o.game.semi = 0;
 		});
-		this.ROOM.game.qTimer = setTimeout(this.ROOM.turnEnd, this.ROOM.game.roundTime);
+		this.ROOM.game.qTimer = setTimeout(() => { this.ROOM.turnEnd(); }, this.ROOM.game.roundTime);
 		this.ROOM.byMaster('turnStart', { roundTime: this.ROOM.game.roundTime }, true);
 	}
 
@@ -119,7 +119,7 @@ module.exports = class {
 		});
 
 		const isGameEnded = this.ROOM.game.round === this.ROOM.round
-		this.ROOM.game._rrt = setTimeout(this.ROOM.roundReady, isGameEnded ? 3000 : 10000);
+		this.ROOM.game._rrt = setTimeout(() => { this.ROOM.roundReady(); }, isGameEnded ? 3000 : 10000);
 	}
 
 	submit(client, text) {
