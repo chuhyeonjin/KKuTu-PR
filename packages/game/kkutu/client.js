@@ -8,10 +8,6 @@ const Room = require('./room');
 const channel = process.env['CHANNEL'] || 0;
 const GUEST_IMAGE = '/img/kkutu/guest.png';
 
-// TODO: Const 로 옮기기
-const MAX_OKG = 18;
-const PER_OKG = 600000;
-
 function getFreeChannel(CHAN, ROOM) {
   if (Cluster.isMaster) {
     const list = {};
@@ -102,8 +98,8 @@ class Client {
         }
         this.data.playTime += time;
 
-        while (this.data.playTime >= PER_OKG * (this.okgCount + 1)) {
-          if (this.okgCount >= MAX_OKG) return;
+        while (this.data.playTime >= Const.PER_OKG * (this.okgCount + 1)) {
+          if (this.okgCount >= Const.MAX_OKG) return;
           this.okgCount++;
         }
         this.send('okg', { time: this.data.playTime, count: this.okgCount });
@@ -268,7 +264,7 @@ class Client {
         if (first) this.flush();
         else {
           this.checkExpire();
-          this.okgCount = Math.floor((this.data.playTime || 0) / PER_OKG);
+          this.okgCount = Math.floor((this.data.playTime || 0) / Const.PER_OKG);
         }
         /* Enhanced User Block System [S] */
         if (black) {

@@ -268,3 +268,5 @@ exports.GUEST_PERMISSION = {
 };
 exports.ENABLED_ROUND_TIME = [10, 30, 60, 90, 120, 150];
 exports.ENABLED_FORM = ['S', 'J'];
+exports.MAX_OKG = 18;
+exports.PER_OKG = 600000;
