@@ -16,17 +16,114 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-var Const = require('kkutu-common/const');
-var Lizard = require('kkutu-common/lizard');
+const Const = require('kkutu-common/const');
 
 const ROBOT_START_DELAY = [1200, 800, 400, 200, 0];
 const ROBOT_TYPE_COEF = [1250, 750, 500, 250, 0];
 const ROBOT_THINK_COEF = [4, 2, 1, 0, 0];
 const ROBOT_HIT_LIMIT = [8, 4, 2, 1, 0];
 const ROBOT_LENGTH_LIMIT = [3, 4, 9, 99, 99];
+// 두음법칙
 const RIEUL_TO_NIEUN = [4449, 4450, 4457, 4460, 4462, 4467];
 const RIEUL_TO_IEUNG = [4451, 4455, 4456, 4461, 4466, 4469];
 const NIEUN_TO_IEUNG = [4455, 4461, 4466, 4469];
+
+/**
+ * 키 값을 리턴합니다.
+ *
+ * 어인정 -> X, 우리말 -> L, 깐깐 -> S
+ * @param opts
+ * @returns {'' | 'X' | 'L' | 'S', 'XL' | 'XS' | 'LS' | 'XLS'}
+ */
+function keyByOptions(opts) {
+  const arr = [];
+
+  if (opts.injeong) arr.push('X');
+  if (opts.loanword) arr.push('L');
+  if (opts.strict) arr.push('S');
+  return arr.join('');
+}
+
+/**
+ * Shuffle array
+ * @template T
+ * @param arr {T[]}
+ * @returns {T[]}
+ */
+function shuffle(arr) {
+  const copyOfArr = [...arr];
+  copyOfArr.sort(() => Math.random() - 0.5);
+  return copyOfArr;
+}
+
+function getChar(text, gameMode) {
+  switch (Const.GAME_TYPE[gameMode]) {
+  case 'EKT': return text.slice(text.length - 3);
+  case 'ESH':
+  case 'KKT':
+  case 'KSH': return text.slice(-1);
+  case 'KAP': return text.charAt(0);
+  }
+}
+
+/**
+ * 두음법칙
+ * @param char {string}
+ * @param gameMode {string}
+ * @returns {undefined | string}
+ */
+function getSubChar(char, gameMode) {
+  switch (Const.GAME_TYPE[gameMode]) {
+  case 'EKT':
+    if (char.length > 2) return char.slice(1);
+    break;
+  case 'KKT': case 'KSH': case 'KAP': {
+    const k = char.charCodeAt() - 0xAC00;
+    // U+AC00..U+D7AF 를 벗어나는 경우 (유니코드 Hangul Syllables)
+    if (k < 0 || k > 11171) break;
+    // ㄱ -> 0 과 같이 표현된 [초성, 중성, 종성]
+    const ca = [Math.floor(k / 28 / 21), Math.floor(k / 28) % 21, k % 28];
+    // 유니코드 Hangul Jamo 에서의 [초성, 중성, 종성]
+    const cb = [ca[0] + 0x1100, ca[1] + 0x1161, ca[2] + 0x11A7];
+
+    let 두음법칙을_적용했는가 = false;
+    if (cb[0] == 4357) { // ㄹ에서 ㄴ, ㅇ
+      두음법칙을_적용했는가 = true;
+      if (RIEUL_TO_NIEUN.includes(cb[1])) cb[0] = 4354;
+      else if (RIEUL_TO_IEUNG.includes(cb[1])) cb[0] = 4363;
+      else 두음법칙을_적용했는가 = false;
+    } else if (cb[0] == 4354) { // ㄴ에서 ㅇ
+      if (NIEUN_TO_IEUNG.includes(cb[1])) {
+        cb[0] = 4363;
+        두음법칙을_적용했는가 = true;
+      }
+    }
+
+    if (두음법칙을_적용했는가) {
+      cb[0] -= 0x1100; cb[1] -= 0x1161; cb[2] -= 0x11A7;
+      return String.fromCharCode(((cb[0] * 21) + cb[1]) * 28 + cb[2] + 0xAC00);
+    }
+    break;
+  }
+  case 'ESH': default:
+    break;
+  }
+}
+
+/**
+ * 미션 글자를 랜덤하게 고릅니다.
+ * @param lang {'ko' | string}
+ * @returns {string} 한 글자
+ */
+function getMission(lang) {
+  /**
+   * @type {string[]}
+   */
+  const arr = (lang === 'ko') ? Const.MISSION_ko : Const.MISSION_en;
+
+  if (!arr) return '-';
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 module.exports = class {
   constructor(_DB, _DIC, _ROOM) {
@@ -35,94 +132,183 @@ module.exports = class {
     this.ROOM = _ROOM;
   }
 
+  /**
+   * @param char
+   * @param subChar
+   * @param type {number} 0 무작위 단어 하나, 1 존재 여부, 2 단어 목록
+   * @returns {Promise}
+   */
+  getAuto(char, subChar, type) {
+    return new Promise((resolve) => {
+      const gameType = Const.GAME_TYPE[this.ROOM.mode];
+      const adc = char + (subChar ? ('|' + subChar) : '');
+      let adv;
+
+      switch (gameType) {
+      case 'EKT':
+        adv = `^(${adc})..`;
+        break;
+      case 'KSH':
+        adv = `^(${adc}).`;
+        break;
+      case 'ESH':
+        adv = `^(${adc})...`;
+        break;
+      case 'KKT':
+        adv = `^(${adc}).{${this.ROOM.game.wordLength - 1}}$`;
+        break;
+      case 'KAP':
+        adv = `.(${adc})$`;
+        break;
+      }
+
+      const key = gameType + '_' + keyByOptions(this.ROOM.opts);
+      const mannerTable = this.DB.kkutu_manner[this.ROOM.rule.lang];
+
+      if (!char) {
+        console.log(`Undefined char detected! key=${key} type=${type} adc=${adc}`);
+      }
+
+      const produce = () => {
+        function updateMannerCache(list) {
+          function onFail(list) {
+            mannerTable.createColumn(key, 'boolean').on(() => {
+              updateMannerCache(list);
+            });
+          }
+
+          mannerTable.upsert(['_id', char]).set([key, list.length ? true : false]).on(null, null, () => { onFail(list); });
+        }
+
+        const query = [['_id', new RegExp(adv)]];
+        if (!this.ROOM.opts.injeong) query.push(['flag', { $nand: Const.KOR_FLAG.INJEONG }]);
+        if (this.ROOM.rule.lang === 'ko') {
+          if (this.ROOM.opts.loanword) query.push(['flag', { $nand: Const.KOR_FLAG.LOANWORD }]);
+          if (this.ROOM.opts.strict) query.push(['type', Const.KOR_STRICT], ['flag', { $lte: 3 }]);
+          else query.push(['type', Const.KOR_GROUP]);
+        } else {
+          query.push(['_id', Const.ENG_ID]);
+        }
+
+        const aft = ($md) => {
+          switch (type) {
+          case 0:
+          default:
+            resolve($md[Math.floor(Math.random() * $md.length)]);
+            break;
+          case 1:
+            resolve($md.length ? true : false);
+            break;
+          case 2:
+            resolve($md);
+            break;
+          }
+        };
+
+        this.DB.kkutu[this.ROOM.rule.lang].find(...query).limit(type == 1 ? 1 : 123).on(($md) => {
+          updateMannerCache($md);
+
+          if (this.ROOM.game.chain) {
+            $md = $md.filter((item) => !this.ROOM.game.chain.includes(item));
+          }
+          aft($md);
+        });
+      };
+
+      mannerTable.findOne(['_id', char || '★']).on(($mn) => {
+        if ($mn && type === 1 && $mn[key] !== null) {
+          resolve($mn[key]);
+          return;
+        }
+        produce();
+      });
+    });
+  }
+
   getTitle() {
-    var R = new Lizard.Tail();
-    var l = this.ROOM.rule;
-    var EXAMPLE;
-    var eng; var ja;
+    return new Promise((resolve) => {
+      const rule = this.ROOM.rule;
 
-    if (!l) {
-      R.go('undefinedd');
-      return R;
-    }
-    if (!l.lang) {
-      R.go('undefinedd');
-      return R;
-    }
-    EXAMPLE = Const.EXAMPLE_TITLE[l.lang];
-    this.ROOM.game.dic = {};
-
-    switch (Const.GAME_TYPE[this.ROOM.mode]) {
-    case 'EKT':
-    case 'ESH':
-      eng = '^' + String.fromCharCode(97 + Math.floor(Math.random() * 26));
-      break;
-    case 'KKT':
-      this.ROOM.game.wordLength = 3;
-    case 'KSH':
-      ja = 44032 + 588 * Math.floor(Math.random() * 18);
-      eng = '^[\\u' + ja.toString(16) + '-\\u' + (ja + 587).toString(16) + ']';
-      break;
-    case 'KAP':
-      ja = 44032 + 588 * Math.floor(Math.random() * 18);
-      eng = '[\\u' + ja.toString(16) + '-\\u' + (ja + 587).toString(16) + ']$';
-      break;
-    }
-
-    var my = this;
-    function tryTitle(h) {
-      if (h > 50) {
-        R.go(EXAMPLE);
+      if (!rule || !rule.lang) {
+        resolve('undefinedd');
         return;
       }
-      my.DB.kkutu[l.lang].find(
-        ['_id', new RegExp(eng + '.{' + Math.max(1, my.ROOM.round - 1) + '}$')],
-        // [ 'hit', { '$lte': h } ],
-        (l.lang == 'ko') ? ['type', Const.KOR_GROUP] : ['_id', Const.ENG_ID]
-        // '$where', eng+"this._id.length == " + Math.max(2, my.round) + " && this.hit <= " + h
-      ).limit(20).on(function($md) {
-        var list;
 
-        if ($md.length) {
-          list = shuffle($md);
+      const EXAMPLE = Const.EXAMPLE_TITLE[rule.lang];
+      this.ROOM.game.dic = {};
+
+      let eng;
+
+      switch (Const.GAME_TYPE[this.ROOM.mode]) {
+      case 'EKT':
+      case 'ESH':
+        eng = '^' + String.fromCharCode(97 + Math.floor(Math.random() * 26));
+        break;
+      case 'KKT':
+        this.ROOM.game.wordLength = 3;
+      case 'KSH': {
+        // 가나다라마바사아자차카타파하
+        const consonant = 44032 + 588 * Math.floor(Math.random() * 18);
+        eng = '^[\\u' + consonant.toString(16) + '-\\u' + (consonant + 587).toString(16) + ']';
+        break;
+      }
+      case 'KAP': {
+        // 가나다라마바사아자차카타파하
+        const consonant = 44032 + 588 * Math.floor(Math.random() * 18);
+        eng = '[\\u' + consonant.toString(16) + '-\\u' + (consonant + 587).toString(16) + ']$';
+        break;
+      }
+      }
+
+      const checkTitle = async (title) => {
+        if (title == null) {
+          return EXAMPLE;
+        }
+
+        /* 부하가 너무 걸린다면 주석을 풀자.
+        return true;
+        */
+
+        const checkPromises = title.split('').map((char) => this.getAuto(char, getSubChar(char, this.ROOM.mode), 1));
+        const checkResult = await Promise.all(checkPromises);
+        for (const res of checkResult) {
+          if (!res) return EXAMPLE;
+        }
+
+        return title;
+      };
+
+      const tryTitle = (h) => {
+        if (h > 50) {
+          resolve(EXAMPLE);
+          return;
+        }
+
+        const otherCharLength = Math.max(1, this.ROOM.round - 1);
+        this.DB.kkutu[rule.lang].find(
+          ['_id', new RegExp(`${eng}.{${otherCharLength}}$`)],
+          // [ 'hit', { '$lte': h } ],
+          (rule.lang === 'ko') ? ['type', Const.KOR_GROUP] : ['_id', Const.ENG_ID]
+          // '$where', eng+"this._id.length == " + Math.max(2, my.round) + " && this.hit <= " + h
+        ).limit(20).on(($md) => {
+          if (!$md.length) {
+            tryTitle(h + 10);
+            return;
+          }
+
+          const list = shuffle($md);
           checkTitle(list.shift()._id).then(onChecked);
 
           function onChecked(v) {
-            if (v) R.go(v);
-            else if (list.length) checkTitle(list.shift()._id).then(onChecked);
-            else R.go(EXAMPLE);
+            if (v) resolve(v);
+            else if (!list.length) resolve(EXAMPLE);
+            else checkTitle(list.shift()._id).then(onChecked);
           }
-        } else {
-          tryTitle(h + 10);
-        }
-      });
-    }
-    function checkTitle(title) {
-      var R = new Lizard.Tail();
-      var i; var list = [];
-      var len;
-
-      /* ���ϰ� �ʹ� �ɸ��ٸ� �ּ��� Ǯ��.
-            R.go(true);
-            return R;
-            */
-      if (title == null) {
-        R.go(EXAMPLE);
-      } else {
-        len = title.length;
-        for (i = 0; i < len; i++) list.push(getAuto.call(my, title[i], getSubChar.call(my, title[i]), 1));
-
-        Lizard.all(list).then(function(res) {
-          for (i in res) if (!res[i]) return R.go(EXAMPLE);
-
-          return R.go(title);
         });
-      }
-      return R;
-    }
-    tryTitle(10);
+      };
 
-    return R;
+      tryTitle(10);
+    });
   }
 
   roundReady() {
@@ -133,7 +319,7 @@ module.exports = class {
     this.ROOM.game.roundTime = this.ROOM.time * 1000;
     if (this.ROOM.game.round <= this.ROOM.round) {
       this.ROOM.game.char = this.ROOM.game.title[this.ROOM.game.round - 1];
-      this.ROOM.game.subChar = getSubChar.call(this, this.ROOM.game.char);
+      this.ROOM.game.subChar = getSubChar(this.ROOM.game.char, this.ROOM.mode);
       this.ROOM.game.chain = [];
       if (this.ROOM.opts.mission) this.ROOM.game.mission = getMission(this.ROOM.rule.lang);
       if (this.ROOM.opts.sami) this.ROOM.game.wordLength = 2;
@@ -204,7 +390,7 @@ module.exports = class {
     }
 
     var my = this;
-    getAuto.call(this, this.ROOM.game.char, this.ROOM.game.subChar, 0).then(function(w) {
+    this.getAuto(this.ROOM.game.char, this.ROOM.game.subChar, 0).then(function(w) {
       my.ROOM.byMaster('turnEnd', {
         ok: false,
         target: target ? target.id : null,
@@ -234,8 +420,8 @@ module.exports = class {
 
     function onDB($doc) {
       if (!my.ROOM.game.chain) return;
-      var preChar = getChar.call(my, text);
-      var preSubChar = getSubChar.call(my, preChar);
+      var preChar = getChar(text, my.ROOM.mode);
+      var preSubChar = getSubChar(preChar, my.ROOM.mode);
       var firstMove = my.ROOM.game.chain.length < 1;
 
       function preApproved() {
@@ -275,7 +461,7 @@ module.exports = class {
           }
         }
         if (firstMove || my.ROOM.opts.manner) {
-          getAuto.call(my, preChar, preSubChar, 1).then(function(w) {
+          my.getAuto(preChar, preSubChar, 1).then(function(w) {
             if (w) approved();
             else {
               my.ROOM.game.loading = false;
@@ -348,7 +534,7 @@ module.exports = class {
 
     var my = this;
 
-    getAuto.call(this, this.ROOM.game.char, this.ROOM.game.subChar, 2).then(function(list) {
+    this.getAuto(this.ROOM.game.char, this.ROOM.game.subChar, 2).then(function(list) {
       if (list.length) {
         list.sort(function(a, b) { return b.hit - a.hit; });
         if (ROBOT_HIT_LIMIT[level] > list[0].hit) denied();
@@ -395,190 +581,31 @@ module.exports = class {
       robot._done.push(text);
       setTimeout(() => { my.ROOM.turnRobot(robot, text); }, delay);
     }
-    function getWishList(list) {
-      var R = new Lizard.Tail();
-      var wz = [];
-      var res;
+    async function getWishList(list) {
+      const wishPromises = list.map((item) => getWish(item));
+      const result = await Promise.all(wishPromises);
 
-      for (i in list) wz.push(getWish(list[i]));
-      Lizard.all(wz).then(function($res) {
-        if (!my.ROOM.game.chain) return;
-        $res.sort(function(a, b) { return a.length - b.length; });
+      if (!my.ROOM.game.chain) return;
 
-        if (my.ROOM.opts.manner || !my.ROOM.game.chain.length) {
-          while (res = $res.shift()) if (res.length) break;
-        } else res = $res.shift();
-        R.go(res ? res.char : null);
-      });
-      return R;
+      result.sort((a, b) => a.length - b.length);
+
+      let res = result.shift();
+      if (my.ROOM.opts.manner || !my.ROOM.game.chain.length) {
+        while (res) {
+          if (res.length) break;
+          res = result.shift();
+        }
+      }
+      return res ? res.char : null;
     }
     function getWish(char) {
-      var R = new Lizard.Tail();
-
-      my.DB.kkutu[my.ROOM.rule.lang].find(['_id', new RegExp(isRev ? `.${char}$` : `^${char}.`)]).limit(10).on(function($res) {
-        R.go({ char: char, length: $res.length });
+      return new Promise((resolve) => {
+        my.DB.kkutu[my.ROOM.rule.lang]
+          .find(['_id', new RegExp(isRev ? `.${char}$` : `^${char}.`)])
+          .limit(10).on(($res) => {
+            resolve({ char: char, length: $res.length });
+          });
       });
-      return R;
     }
   }
 };
-
-function getMission(l) {
-  var arr = (l == 'ko') ? Const.MISSION_ko : Const.MISSION_en;
-	
-  if (!arr) return '-';
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-function getAuto(char, subc, type) {
-  /* type
-		0 ������ �ܾ� �ϳ�
-		1 ���� ����
-		2 �ܾ� ���
-	*/
-  var R = new Lizard.Tail();
-  var gameType = Const.GAME_TYPE[this.ROOM.mode];
-  var adv; var adc;
-  var key = gameType + '_' + keyByOptions(this.ROOM.opts);
-  var MAN = this.DB.kkutu_manner[this.ROOM.rule.lang];
-  var bool = type == 1;
-	
-  adc = char + (subc ? ('|' + subc) : '');
-  switch (gameType) {
-  case 'EKT':
-    adv = `^(${adc})..`;
-    break;
-  case 'KSH':
-    adv = `^(${adc}).`;
-    break;
-  case 'ESH':
-    adv = `^(${adc})...`;
-    break;
-  case 'KKT':
-    adv = `^(${adc}).{${this.ROOM.game.wordLength - 1}}$`;
-    break;
-  case 'KAP':
-    adv = `.(${adc})$`;
-    break;
-  }
-  if (!char) {
-    console.log(`Undefined char detected! key=${key} type=${type} adc=${adc}`);
-  }
-  MAN.findOne(['_id', char || '��']).on(function($mn) {
-    if ($mn && bool) {
-      if ($mn[key] === null) produce();
-      else R.go($mn[key]);
-    } else {
-      produce();
-    }
-  });
-  var my = this;
-  function produce() {
-    var aqs = [['_id', new RegExp(adv)]];
-    var aft;
-    var lst;
-		
-    if (!my.ROOM.opts.injeong) aqs.push(['flag', { $nand: Const.KOR_FLAG.INJEONG }]);
-    if (my.ROOM.rule.lang == 'ko') {
-      if (my.ROOM.opts.loanword) aqs.push(['flag', { $nand: Const.KOR_FLAG.LOANWORD }]);
-      if (my.ROOM.opts.strict) aqs.push(['type', Const.KOR_STRICT], ['flag', { $lte: 3 }]);
-      else aqs.push(['type', Const.KOR_GROUP]);
-    } else {
-      aqs.push(['_id', Const.ENG_ID]);
-    }
-    switch (type) {
-    case 0:
-    default:
-      aft = function($md) {
-        R.go($md[Math.floor(Math.random() * $md.length)]);
-      };
-      break;
-    case 1:
-      aft = function($md) {
-        R.go($md.length ? true : false);
-      };
-      break;
-    case 2:
-      aft = function($md) {
-        R.go($md);
-      };
-      break;
-    }
-    my.DB.kkutu[my.ROOM.rule.lang].find.apply(this, aqs).limit(bool ? 1 : 123).on(function($md) {
-      forManner($md);
-      if (my.ROOM.game.chain) aft($md.filter(function(item) { return !my.ROOM.game.chain.includes(item); }));
-      else aft($md);
-    });
-    function forManner(list) {
-      lst = list;
-      MAN.upsert(['_id', char]).set([key, lst.length ? true : false]).on(null, null, onFail);
-    }
-    function onFail() {
-      MAN.createColumn(key, 'boolean').on(function() {
-        forManner(lst);
-      });
-    }
-  }
-  return R;
-}
-function keyByOptions(opts) {
-  var arr = [];
-	
-  if (opts.injeong) arr.push('X');
-  if (opts.loanword) arr.push('L');
-  if (opts.strict) arr.push('S');
-  return arr.join('');
-}
-function shuffle(arr) {
-  var i; var r = [];
-	
-  for (i in arr) r.push(arr[i]);
-  r.sort(function(a, b) { return Math.random() - 0.5; });
-	
-  return r;
-}
-function getChar(text) {
-  switch (Const.GAME_TYPE[this.ROOM.mode]) {
-  case 'EKT': return text.slice(text.length - 3);
-  case 'ESH':
-  case 'KKT':
-  case 'KSH': return text.slice(-1);
-  case 'KAP': return text.charAt(0);
-  }
-}
-function getSubChar(char) {
-  var r;
-  var c = char.charCodeAt();
-  var k;
-  var ca; var cb; var cc;
-	
-  switch (Const.GAME_TYPE[this.ROOM.mode]) {
-  case 'EKT':
-    if (char.length > 2) r = char.slice(1);
-    break;
-  case 'KKT': case 'KSH': case 'KAP':
-    k = c - 0xAC00;
-    if (k < 0 || k > 11171) break;
-    ca = [Math.floor(k / 28 / 21), Math.floor(k / 28) % 21, k % 28];
-    cb = [ca[0] + 0x1100, ca[1] + 0x1161, ca[2] + 0x11A7];
-    cc = false;
-    if (cb[0] == 4357) { // ������ ��, ��
-      cc = true;
-      if (RIEUL_TO_NIEUN.includes(cb[1])) cb[0] = 4354;
-      else if (RIEUL_TO_IEUNG.includes(cb[1])) cb[0] = 4363;
-      else cc = false;
-    } else if (cb[0] == 4354) { // ������ ��
-      if (NIEUN_TO_IEUNG.indexOf(cb[1]) != -1) {
-        cb[0] = 4363;
-        cc = true;
-      }
-    }
-    if (cc) {
-      cb[0] -= 0x1100; cb[1] -= 0x1161; cb[2] -= 0x11A7;
-      r = String.fromCharCode(((cb[0] * 21) + cb[1]) * 28 + cb[2] + 0xAC00);
-    }
-    break;
-  case 'ESH': default:
-    break;
-  }
-  return r;
-}
