@@ -1,7 +1,6 @@
 const Cluster = require('cluster');
 const Const = require('kkutu-common/const');
 const JLog = require('kkutu-common/jjlog');
-const Lizard = require('kkutu-common/lizard');
 const Robot = require('./robot');
 
 /**
@@ -583,7 +582,7 @@ class Room {
       suv.push(o.flush(true));
     }
 
-    Lizard.all(suv).then((uds) => {
+    Promise.all(suv).then((uds) => {
       const o = {};
       const suv = [];
 
@@ -592,7 +591,7 @@ class Room {
         suv.push(this.DB.redis.getSurround(uds[i].id));
       }
 
-      Lizard.all(suv).then((ranks) => {
+      Promise.all(suv).then((ranks) => {
         for (const i in ranks) {
           if (!o[ranks[i].target]) continue;
 

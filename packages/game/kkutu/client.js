@@ -1,7 +1,6 @@
 const Cluster = require('cluster');
 const JLog = require('kkutu-common/jjlog');
 const Const = require('kkutu-common/const');
-const Lizard = require('kkutu-common/lizard');
 const Data = require('./data');
 const Room = require('./room');
 
@@ -232,76 +231,74 @@ class Client {
   }
 
   refresh() {
-    var R = new Lizard.Tail();
+    return new Promise((resolve) => {
+      if (this.guest) {
+        this.equip = {};
+        this.data = new Data();
+        this.money = 0;
+        this.friends = {};
 
-    if (this.guest) {
-      this.equip = {};
-      this.data = new Data();
-      this.money = 0;
-      this.friends = {};
+        resolve({ result: 200 });
+      } else {
+        this.DB.users.findOne(['_id', this.id]).on(($user) => {
+          var first = !$user;
+          var black = first ? '' : $user.black;
+          /* Enhanced User Block System [S] */
+          const blockedUntil = (first || !$user.blockedUntil) ? null : $user.blockedUntil;
+          /* Enhanced User Block System [E] */
 
-      R.go({ result: 200 });
-    } else {
-      this.DB.users.findOne(['_id', this.id]).on(($user) => {
-        var first = !$user;
-        var black = first ? '' : $user.black;
-        /* Enhanced User Block System [S] */
-        const blockedUntil = (first || !$user.blockedUntil) ? null : $user.blockedUntil;
-        /* Enhanced User Block System [E] */
-
-        if (first) $user = { money: 0 };
-        if (black == 'null') black = false;
-        if (black == 'chat') {
-          black = false;
-          this.noChat = true;
-        }
-        this.exordial = $user.exordial || '';
-        this.equip = $user.equip || {};
-        this.box = $user.box || {};
-        this.data = new Data($user.kkutu);
-        this.money = Number($user.money);
-        this.friends = $user.friends || {};
-        if (first) this.flush();
-        else {
-          this.checkExpire();
-          this.okgCount = Math.floor((this.data.playTime || 0) / Const.PER_OKG);
-        }
-        /* Enhanced User Block System [S] */
-        if (black) {
-          if (blockedUntil) R.go({ result: 444, black: black, blockedUntil: blockedUntil });
-          else R.go({ result: 444, black: black });
-        }
-        /* Enhanced User Block System [E] */
-        else if (Cluster.isMaster && $user.server) R.go({ result: 409, black: $user.server });
-        else if (this.getNIGHT() && this.isAjae === false) R.go({ result: 440 });
-        else R.go({ result: 200 });
-      });
-    }
-    return R;
+          if (first) $user = { money: 0 };
+          if (black == 'null') black = false;
+          if (black == 'chat') {
+            black = false;
+            this.noChat = true;
+          }
+          this.exordial = $user.exordial || '';
+          this.equip = $user.equip || {};
+          this.box = $user.box || {};
+          this.data = new Data($user.kkutu);
+          this.money = Number($user.money);
+          this.friends = $user.friends || {};
+          if (first) this.flush();
+          else {
+            this.checkExpire();
+            this.okgCount = Math.floor((this.data.playTime || 0) / Const.PER_OKG);
+          }
+          /* Enhanced User Block System [S] */
+          if (black) {
+            if (blockedUntil) resolve({ result: 444, black: black, blockedUntil: blockedUntil });
+            else resolve({ result: 444, black: black });
+          }
+          /* Enhanced User Block System [E] */
+          else if (Cluster.isMaster && $user.server) resolve({ result: 409, black: $user.server });
+          else if (this.getNIGHT() && this.isAjae === false) resolve({ result: 440 });
+          else resolve({ result: 200 });
+        });
+      }
+    });
   }
 
   flush(box, equip, friends) {
-    var R = new Lizard.Tail();
-
-    if (this.guest) {
-      R.go({ id: this.id, prev: 0 });
-      return R;
-    }
-    this.DB.users.upsert(['_id', this.id]).set(
-      !isNaN(this.money) ? ['money', this.money] : undefined,
-      (this.data && !isNaN(this.data.score)) ? ['kkutu', this.data] : undefined,
-      box ? ['box', this.box] : undefined,
-      equip ? ['equip', this.equip] : undefined,
-      friends ? ['friends', this.friends] : undefined
-    ).on((__res) => {
-      this.DB.redis.getGlobal(this.id).then((_res) => {
-        this.DB.redis.putGlobal(this.id, this.data.score).then((res) => {
-          JLog.log(`FLUSHED [${this.id}] PTS=${this.data.score} MNY=${this.money}`);
-          R.go({ id: this.id, prev: _res });
+    return new Promise((resolve) => {
+      if (this.guest) {
+        resolve({ id: this.id, prev: 0 });
+        return;
+      }
+      this.DB.users.upsert(['_id', this.id]).set(
+        !isNaN(this.money) ? ['money', this.money] : undefined,
+        (this.data && !isNaN(this.data.score)) ? ['kkutu', this.data] : undefined,
+        box ? ['box', this.box] : undefined,
+        equip ? ['equip', this.equip] : undefined,
+        friends ? ['friends', this.friends] : undefined
+      ).on((__res) => {
+        this.DB.redis.getGlobal(this.id).then((_res) => {
+          this.DB.redis.putGlobal(this.id, this.data.score).then((res) => {
+            JLog.log(`FLUSHED [${this.id}] PTS=${this.data.score} MNY=${this.money}`);
+            resolve({ id: this.id, prev: _res });
+          });
         });
       });
     });
-    return R;
   }
 
   invokeWordPiece(text, coef) {
