@@ -17,7 +17,6 @@
  */
 
 var Const = require('kkutu-common/const');
-var Lizard = require('kkutu-common/lizard');
 
 const ROBOT_START_DELAY = [1200, 800, 400, 200, 0];
 const ROBOT_TYPE_COEF = [1250, 750, 500, 250, 0];
