@@ -70,7 +70,7 @@ class Client {
     this.GUEST_PERMISSION = GUEST_PERMISSION;
     this.getRid = getRid;
     this.setRid = setRid;
-    this.publish = publish;
+    this.kkutuPublish = publish;
     this.getNIGHT = getNIGHT;
 
     this.place = 0;
@@ -396,7 +396,7 @@ class Client {
         if (this.place != 0) {
           this.sendError(409);
         }
-        $room = new Room(room, getFreeChannel(this.CHAN, this.ROOM), this.getRid(), this.DIC, this.ROOM, this.DB, this.publish);
+        $room = new Room(room, getFreeChannel(this.CHAN, this.ROOM), this.getRid(), this.DIC, this.ROOM, this.DB, this.kkutuPublish);
 
         process.send({ type: 'room-new', target: this.id, room: $room.getData() });
         this.ROOM[$room.id] = $room;
@@ -517,7 +517,7 @@ class Client {
     this.ready = false;
 
     const ud = this.getData();
-    this.pracRoom = new Room($room.getData(), undefined, this.getRid(), this.DIC, this.ROOM, this.DB, this.publish);
+    this.pracRoom = new Room($room.getData(), undefined, this.getRid(), this.DIC, this.ROOM, this.DB, this.kkutuPublish);
 
     this.pracRoom.id = $room.id + 1000;
     ud.game.practice = this.pracRoom.id;
@@ -542,7 +542,7 @@ class Client {
     if ($room.master != this.id) return this.sendError(400);
 
     $room.set(room);
-    this.publish('room', { target: this.id, room: $room.getData(), modify: true }, room.password);
+    this.kkutuPublish('room', { target: this.id, room: $room.getData(), modify: true }, room.password);
   }
 
   applyEquipOptions(rewards) {
